@@ -1,0 +1,108 @@
+import { requireScope, isResponse } from '@/lib/guard';
+import { createServiceClient } from '@/lib/supabase/service';
+import { json, err, readJson } from '@/lib/http';
+import { rateLimit } from '@/lib/ratelimit';
+import { ingestConversation } from '@/lib/ingest';
+
+const RESULT_CAP = 100_000; // chars
+
+type Body = {
+  task_id?: string;
+  result_md?: string;
+  conversation?: { type?: 'url' | 'markdown'; url?: string; md?: string };
+};
+
+// POST /v1/submissions — candidate submits result_md + agent conversation.
+export async function POST(req: Request) {
+  const key = await requireScope(req, 'candidate', 'submissions:write');
+  if (isResponse(key)) return key;
+
+  // Anti-spam (spec §9.4): best-effort per-instance limiter.
+  if (!rateLimit(`sub:${key.ownerId}`, 20, 10 * 60_000)) {
+    return err(429, 'rate limit exceeded, slow down');
+  }
+
+  const body = await readJson<Body>(req);
+  if (!body) return err(400, 'invalid json body');
+
+  const taskId = String(body.task_id ?? '');
+  const resultMd = String(body.result_md ?? '').slice(0, RESULT_CAP);
+  const conv = body.conversation;
+  if (!taskId) return err(400, 'task_id is required');
+  if (!resultMd.trim()) return err(400, 'result_md is required');
+  if (!conv || (conv.type !== 'url' && conv.type !== 'markdown')) {
+    return err(400, "conversation.type must be 'url' or 'markdown'");
+  }
+  if (conv.type === 'url' && !conv.url) return err(400, 'conversation.url is required');
+  if (conv.type === 'markdown' && !conv.md) return err(400, 'conversation.md is required');
+
+  const db = createServiceClient();
+
+  // Task must exist and belong to an open job.
+  const { data: task, error: taskErr } = await db
+    .from('tasks')
+    .select('id, max_submissions_per_candidate, jobs!inner(status)')
+    .eq('id', taskId)
+    .eq('jobs.status', 'open')
+    .maybeSingle();
+  if (taskErr) return err(500, taskErr.message);
+  if (!task) return err(404, 'task not found or not open');
+
+  // Optional per-candidate submission cap.
+  if (task.max_submissions_per_candidate != null) {
+    const { count } = await db
+      .from('submissions')
+      .select('id', { count: 'exact', head: true })
+      .eq('task_id', taskId)
+      .eq('candidate_id', key.ownerId);
+    if ((count ?? 0) >= task.max_submissions_per_candidate) {
+      return err(409, 'submission limit reached for this task');
+    }
+  }
+
+  // Insert the submission first — never blocked by transcript ingest.
+  const { data: sub, error: subErr } = await db
+    .from('submissions')
+    .insert({ task_id: taskId, candidate_id: key.ownerId, result_md: resultMd })
+    .select('id, status, submitted_at, content_hash')
+    .single();
+  if (subErr) return err(500, subErr.message);
+
+  // Ingest + store the conversation artifact (best-effort for url).
+  const artifact = await ingestConversation({ type: conv.type, url: conv.url, md: conv.md });
+  const { error: artErr } = await db.from('conversation_artifacts').insert({
+    submission_id: sub.id,
+    ...artifact,
+  });
+  if (artErr) return err(500, artErr.message);
+
+  return json(
+    {
+      submission: sub,
+      conversation: { source_type: artifact.source_type, fetch_status: artifact.fetch_status },
+    },
+    201,
+  );
+}
+
+// GET /v1/submissions?task_id=... — candidate lists their own submissions.
+export async function GET(req: Request) {
+  const key = await requireScope(req, 'candidate', 'submissions:read');
+  if (isResponse(key)) return key;
+
+  const { searchParams } = new URL(req.url);
+  const taskId = searchParams.get('task_id');
+
+  const db = createServiceClient();
+  let query = db
+    .from('submissions')
+    .select('id, task_id, status, submitted_at, content_hash, result_md')
+    .eq('candidate_id', key.ownerId) // scope: only own submissions
+    .order('submitted_at', { ascending: false })
+    .limit(100);
+  if (taskId) query = query.eq('task_id', taskId);
+
+  const { data, error } = await query;
+  if (error) return err(500, error.message);
+  return json({ submissions: data ?? [] });
+}

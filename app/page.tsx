@@ -16,12 +16,12 @@ export default async function Home() {
           <FontAwesomeIcon icon={faBolt} className="w-5 h-5" />
         </div>
         <h1 className="text-4xl font-bold tracking-tight mb-3">
-          Hello from Tarrs
+          powagent
         </h1>
         <p className="text-zinc-600 mb-8">
           {user
             ? `Signed in as ${user.email}`
-            : 'A Next.js + Supabase starter, ready for your first feature.'}
+            : 'AI-native work-sample hiring — evaluate candidates on how they actually work with agents, not on a résumé.'}
         </p>
         <Link
           href={user ? '/dashboard' : '/login'}

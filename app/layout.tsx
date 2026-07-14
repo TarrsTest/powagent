@@ -7,8 +7,8 @@ import '@fortawesome/fontawesome-svg-core/styles.css';
 config.autoAddCss = false;
 
 export const metadata: Metadata = {
-  title: 'My App',
-  description: 'Built with Tarrs',
+  title: 'powagent',
+  description: 'AI-native work-sample hiring platform',
 };
 
 export default function RootLayout({

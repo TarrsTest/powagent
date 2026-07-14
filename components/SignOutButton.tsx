@@ -18,7 +18,7 @@ export default function SignOutButton() {
     <button
       type="button"
       onClick={onClick}
-      className="inline-flex items-center gap-2 h-9 px-3 rounded-lg border border-zinc-200 text-sm text-zinc-700 hover:bg-zinc-50"
+      className="btn btn-ghost btn-sm"
     >
       <FontAwesomeIcon icon={faRightFromBracket} className="w-3 h-3" />
       Sign out

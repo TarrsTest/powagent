@@ -32,15 +32,15 @@ export default function LoginPage() {
   };
 
   return (
-    <main className="min-h-screen flex items-center justify-center px-6">
-      <div className="w-full max-w-sm">
-        <div className="inline-flex items-center justify-center w-10 h-10 rounded-lg bg-violet-100 text-violet-600 mb-5">
+    <main className="min-h-dvh flex items-center justify-center px-6">
+      <div className="w-full max-w-sm card p-8">
+        <div className="inline-flex items-center justify-center w-11 h-11 rounded-xl bg-sky-50 text-sky-700 mb-5">
           <FontAwesomeIcon icon={sent ? faCheck : faEnvelope} className="w-4 h-4" />
         </div>
-        <h1 className="text-2xl font-bold tracking-tight mb-2">
-          {sent ? 'Check your email' : 'Sign in'}
+        <h1 className="text-2xl font-bold tracking-tight text-slate-900 mb-2">
+          {sent ? 'Check your email' : 'Sign in to powagent'}
         </h1>
-        <p className="text-sm text-zinc-600 mb-6">
+        <p className="text-sm text-slate-600 mb-6">
           {sent
             ? `We sent a magic link to ${email}. Click it to sign in.`
             : 'Enter your email — we’ll send you a magic link.'}
@@ -55,7 +55,7 @@ export default function LoginPage() {
               placeholder="you@example.com"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
-              className="w-full h-11 px-4 rounded-lg border border-zinc-300 focus:outline-none focus:border-violet-500"
+              className="field h-11"
             />
             {err && (
               <p className="text-sm text-red-600">{err}</p>
@@ -63,7 +63,7 @@ export default function LoginPage() {
             <button
               type="submit"
               disabled={submitting || !email.trim()}
-              className="w-full h-11 rounded-lg bg-violet-600 text-white text-sm font-semibold hover:bg-violet-700 disabled:opacity-40"
+              className="btn btn-primary w-full h-11"
             >
               {submitting ? 'Sending…' : 'Send magic link'}
             </button>

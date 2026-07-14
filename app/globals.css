@@ -1,11 +1,71 @@
+@import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap');
 @import "tailwindcss";
 
+/* powagent design system — "Soft UI Evolution": professional navy/slate ink,
+   sky-blue CTA, soft shadows, Plus Jakarta Sans. */
 @theme {
-  --color-primary: #6d28d9;
-  --color-primary-soft: #ede9fe;
+  --color-primary: #0369a1;       /* sky-700 — accent / CTA */
+  --color-ink: #0f172a;           /* slate-900 — primary text */
+  --font-sans: 'Plus Jakarta Sans', ui-sans-serif, system-ui, -apple-system,
+    'Segoe UI', Roboto, sans-serif;
 }
 
 html {
-  font-family: ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont,
-    "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  font-family: var(--font-sans);
+}
+
+body {
+  background-color: #f8fafc;      /* slate-50 */
+  color: #0f172a;                 /* slate-900 */
+}
+
+@layer components {
+  /* Surfaces */
+  .card {
+    @apply bg-white border border-slate-200 rounded-2xl shadow-sm;
+  }
+  .card-link {
+    @apply bg-white border border-slate-200 rounded-2xl shadow-sm transition
+           hover:shadow-md hover:border-slate-300;
+  }
+
+  /* Buttons */
+  .btn {
+    @apply inline-flex items-center justify-center gap-2 h-10 px-4 rounded-lg
+           text-sm font-semibold transition-colors cursor-pointer
+           focus-visible:outline-none focus-visible:ring-2
+           focus-visible:ring-sky-500/40 disabled:opacity-50
+           disabled:cursor-not-allowed;
+  }
+  .btn-primary { @apply bg-sky-600 text-white hover:bg-sky-700; }
+  .btn-dark    { @apply bg-slate-900 text-white hover:bg-slate-800; }
+  .btn-ghost   { @apply border border-slate-200 text-slate-700 hover:bg-slate-50; }
+  .btn-sm      { @apply h-9 px-3 text-xs; }
+
+  /* Form controls */
+  .field {
+    @apply w-full h-10 px-3 rounded-lg border border-slate-300 bg-white text-sm
+           text-slate-900 placeholder:text-slate-400 transition
+           focus:outline-none focus:border-sky-500 focus:ring-2 focus:ring-sky-500/20;
+  }
+  .field-area {
+    @apply w-full px-3 py-2 rounded-lg border border-slate-300 bg-white text-sm
+           text-slate-900 placeholder:text-slate-400 transition
+           focus:outline-none focus:border-sky-500 focus:ring-2 focus:ring-sky-500/20;
+  }
+  .label { @apply block text-sm font-medium text-slate-700; }
+
+  /* Badges */
+  .badge {
+    @apply inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-xs font-medium;
+  }
+  .badge-muted   { @apply bg-slate-100 text-slate-600; }
+  .badge-accent  { @apply bg-sky-50 text-sky-700; }
+  .badge-success { @apply bg-emerald-50 text-emerald-700; }
+  .badge-warn    { @apply bg-amber-50 text-amber-700; }
+  .badge-danger  { @apply bg-red-50 text-red-700; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  * { transition-duration: 0.01ms !important; }
 }

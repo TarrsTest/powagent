@@ -12,11 +12,7 @@ export default function IssueKeyForm() {
   return (
     <div className="space-y-3">
       <form action={formAction}>
-        <button
-          type="submit"
-          disabled={pending}
-          className="inline-flex items-center gap-2 h-10 px-4 rounded-lg bg-violet-600 text-white text-sm font-semibold hover:bg-violet-700 disabled:opacity-40"
-        >
+        <button type="submit" disabled={pending} className="btn btn-dark">
           <FontAwesomeIcon icon={faKey} className="w-3.5 h-3.5" />
           {pending ? 'Generating…' : 'Generate new API key'}
         </button>

@@ -1,8 +1,9 @@
 import { redirect } from 'next/navigation';
 import Link from 'next/link';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
-import { faBriefcase, faListCheck, faGear } from '@fortawesome/free-solid-svg-icons';
+import { faBriefcase, faListCheck, faGear, faArrowRight } from '@fortawesome/free-solid-svg-icons';
 import { getProfile } from '@/lib/profile';
+import Brand from '@/components/Brand';
 import SignOutButton from '@/components/SignOutButton';
 
 export default async function DashboardPage() {
@@ -11,44 +12,48 @@ export default async function DashboardPage() {
   const { profile } = session;
   const isRecruiter = profile.role === 'recruiter';
 
+  const primary = isRecruiter
+    ? { href: '/recruiter', icon: faBriefcase, title: 'Recruiter dashboard', body: 'Post jobs & tasks, manage rubrics, evaluate submissions.' }
+    : { href: '/tasks', icon: faListCheck, title: 'Browse tasks', body: 'Find open work samples, submit your result + agent transcript.' };
+
   return (
-    <main className="min-h-screen px-6 py-12">
-      <div className="max-w-2xl mx-auto">
-        <header className="flex items-center justify-between mb-8">
-          <div>
-            <h1 className="text-2xl font-bold tracking-tight">powagent</h1>
-            <p className="text-sm text-zinc-500">
-              {profile.email} · <span className="font-mono">{profile.role}</span>
-            </p>
-          </div>
+    <main className="min-h-dvh">
+      <nav className="max-w-3xl mx-auto flex items-center justify-between px-6 h-16">
+        <Brand href="/dashboard" />
+        <div className="flex items-center gap-3">
+          <span className="badge badge-muted capitalize">{profile.role}</span>
           <SignOutButton />
-        </header>
+        </div>
+      </nav>
 
-        <div className="grid gap-3">
-          {isRecruiter ? (
-            <Link href="/recruiter" className="rounded-xl border border-zinc-200 p-5 hover:border-violet-300 transition-colors">
-              <div className="flex items-center gap-3">
-                <FontAwesomeIcon icon={faBriefcase} className="w-4 h-4 text-violet-600" />
-                <span className="font-semibold">Recruiter dashboard</span>
-              </div>
-              <p className="text-sm text-zinc-600 mt-1">Post jobs & tasks, manage rubrics, evaluate submissions.</p>
-            </Link>
-          ) : (
-            <Link href="/tasks" className="rounded-xl border border-zinc-200 p-5 hover:border-violet-300 transition-colors">
-              <div className="flex items-center gap-3">
-                <FontAwesomeIcon icon={faListCheck} className="w-4 h-4 text-violet-600" />
-                <span className="font-semibold">Browse tasks</span>
-              </div>
-              <p className="text-sm text-zinc-600 mt-1">Find open work samples, submit your result + agent transcript.</p>
-            </Link>
-          )}
+      <div className="max-w-3xl mx-auto px-6 py-8">
+        <h1 className="text-2xl font-bold tracking-tight text-slate-900">
+          Welcome back
+        </h1>
+        <p className="text-sm text-slate-500 mt-1">{profile.email}</p>
 
-          <Link href="/settings" className="rounded-xl border border-zinc-200 p-5 hover:border-violet-300 transition-colors">
-            <div className="flex items-center gap-3">
-              <FontAwesomeIcon icon={faGear} className="w-4 h-4 text-violet-600" />
-              <span className="font-semibold">Settings & API keys</span>
+        <div className="grid gap-3 mt-6 sm:grid-cols-2">
+          <Link href={primary.href} className="card-link p-6 sm:col-span-2">
+            <div className="flex items-start justify-between">
+              <div className="flex items-center gap-3">
+                <span className="inline-flex items-center justify-center w-10 h-10 rounded-xl bg-sky-50 text-sky-700">
+                  <FontAwesomeIcon icon={primary.icon} className="w-4 h-4" />
+                </span>
+                <span className="font-semibold text-slate-900">{primary.title}</span>
+              </div>
+              <FontAwesomeIcon icon={faArrowRight} className="w-4 h-4 text-slate-300 mt-3" />
             </div>
-            <p className="text-sm text-zinc-600 mt-1">
+            <p className="text-sm text-slate-600 mt-3">{primary.body}</p>
+          </Link>
+
+          <Link href="/settings" className="card-link p-6">
+            <div className="flex items-center gap-3 mb-3">
+              <span className="inline-flex items-center justify-center w-10 h-10 rounded-xl bg-slate-100 text-slate-700">
+                <FontAwesomeIcon icon={faGear} className="w-4 h-4" />
+              </span>
+              <span className="font-semibold text-slate-900">Settings & API keys</span>
+            </div>
+            <p className="text-sm text-slate-600">
               {isRecruiter ? 'Your organization and org API keys.' : 'Become a recruiter, or get a candidate API key.'}
             </p>
           </Link>

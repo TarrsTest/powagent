@@ -1,0 +1,11 @@
+# Supabase project config. Edge Functions listed here can override defaults.
+# ping / health / echo are public smoke-test functions — no auth required so
+# they can be curled directly (the API gateway still needs the anon apikey).
+[functions.ping]
+verify_jwt = false
+
+[functions.health]
+verify_jwt = false
+
+[functions.echo]
+verify_jwt = false

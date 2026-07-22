@@ -9,3 +9,6 @@ verify_jwt = false
 
 [functions.echo]
 verify_jwt = false
+
+[functions.dbcheck]
+verify_jwt = false

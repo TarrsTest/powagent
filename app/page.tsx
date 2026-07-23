@@ -20,6 +20,19 @@ const reasons = [
   { icon: faShieldHalved, title: 'Consistent & auditable', body: 'Same task, same rubric, same runtime for everyone. Decisions you can defend.' },
 ];
 
+// Presentational sample for the landing-page preview — mirrors the recruiter ranking view.
+const previewRanks = [
+  { name: 'Carol Diaz', score: 91, note: 'Dedupe + charge in one transaction — closed the crash-consistency gap.', tone: 'success' },
+  { name: 'Alice Chen', score: 88, note: 'Insert-first dedupe, atomicity from the unique key.', tone: 'accent' },
+  { name: 'Ben Okoro', score: 54, note: 'Check-then-set has a TOCTOU race; ignored the agent’s own warning.', tone: 'warn' },
+] as const;
+
+const barTone: Record<string, string> = {
+  success: 'bg-emerald-500',
+  accent: 'bg-sky-500',
+  warn: 'bg-amber-500',
+};
+
 export default async function Home() {
   const supabase = await createClient();
   const {
@@ -50,6 +63,36 @@ export default async function Home() {
             {user ? 'Open dashboard' : 'Get started'}
             <FontAwesomeIcon icon={faArrowRight} className="w-3.5 h-3.5" />
           </Link>
+        </div>
+      </section>
+
+      <section className="max-w-3xl mx-auto px-6 pb-20">
+        <div className="card p-6 sm:p-8">
+          <div className="flex items-center justify-between mb-5">
+            <div>
+              <p className="text-xs font-mono text-slate-400">TASK · RANKED</p>
+              <h2 className="font-semibold text-slate-900">Design a webhook idempotency layer</h2>
+            </div>
+            <span className="badge badge-accent">3 submissions</span>
+          </div>
+          <ul className="space-y-3">
+            {previewRanks.map((c, i) => (
+              <li key={c.name} className="flex items-center gap-4">
+                <span className="shrink-0 w-6 text-center text-sm font-mono text-slate-400">{i + 1}</span>
+                <div className="min-w-0 flex-1">
+                  <div className="flex items-center justify-between gap-3">
+                    <span className="font-medium text-slate-900 truncate">{c.name}</span>
+                    <span className="shrink-0 text-sm font-bold tabular-nums text-slate-900">{c.score}</span>
+                  </div>
+                  <div className="mt-1.5 h-1.5 rounded-full bg-slate-100 overflow-hidden">
+                    <div className={`h-full rounded-full ${barTone[c.tone]}`} style={{ width: `${c.score}%` }} />
+                  </div>
+                  <p className="text-xs text-slate-500 mt-1.5">{c.note}</p>
+                </div>
+              </li>
+            ))}
+          </ul>
+          <p className="text-xs text-slate-400 mt-5 text-center">Illustrative — your rubric, your dimensions.</p>
         </div>
       </section>
 

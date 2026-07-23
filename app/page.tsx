@@ -1,6 +1,9 @@
 import Link from 'next/link';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
-import { faArrowRight, faBriefcase, faRobot, faChartLine } from '@fortawesome/free-solid-svg-icons';
+import {
+  faArrowRight, faBriefcase, faRobot, faChartLine,
+  faScaleBalanced, faEye, faGaugeHigh, faShieldHalved,
+} from '@fortawesome/free-solid-svg-icons';
 import { createClient } from '@/lib/supabase/server';
 import Brand from '@/components/Brand';
 
@@ -8,6 +11,13 @@ const steps = [
   { icon: faBriefcase, title: 'Post a task', body: 'Recruiters publish real, AI-agent-completable work with a scoring rubric.' },
   { icon: faRobot, title: 'Submit the work', body: 'Candidates do the task with their own agent and submit the result + transcript.' },
   { icon: faChartLine, title: 'Evaluate the process', body: 'The runtime scores how they actually worked — not a résumé.' },
+];
+
+const reasons = [
+  { icon: faScaleBalanced, title: 'Rubric-based scoring', body: 'Every submission is judged against the same weighted dimensions — no gut-feel, no bias.' },
+  { icon: faEye, title: 'See the whole process', body: 'The agent transcript is part of the evidence. Reward good reasoning, catch shortcuts.' },
+  { icon: faGaugeHigh, title: 'Faster shortlists', body: 'Ranked candidates the moment work lands — spend review time on the top of the list.' },
+  { icon: faShieldHalved, title: 'Consistent & auditable', body: 'Same task, same rubric, same runtime for everyone. Decisions you can defend.' },
 ];
 
 export default async function Home() {
@@ -43,7 +53,7 @@ export default async function Home() {
         </div>
       </section>
 
-      <section className="max-w-5xl mx-auto px-6 pb-24">
+      <section className="max-w-5xl mx-auto px-6 pb-20">
         <div className="grid gap-4 sm:grid-cols-3">
           {steps.map((s, i) => (
             <div key={s.title} className="card p-6">
@@ -59,6 +69,37 @@ export default async function Home() {
           ))}
         </div>
       </section>
+
+      <section className="max-w-5xl mx-auto px-6 pb-24">
+        <div className="text-center mb-10">
+          <span className="badge badge-muted mb-3">Why teams switch</span>
+          <h2 className="text-2xl sm:text-3xl font-extrabold tracking-tight text-slate-900">
+            Hiring signal you can trust
+          </h2>
+        </div>
+        <div className="grid gap-4 sm:grid-cols-2">
+          {reasons.map((r) => (
+            <div key={r.title} className="card p-6 flex items-start gap-4">
+              <span className="shrink-0 inline-flex items-center justify-center w-10 h-10 rounded-xl bg-slate-900 text-sky-400">
+                <FontAwesomeIcon icon={r.icon} className="w-4 h-4" />
+              </span>
+              <div>
+                <h3 className="font-semibold text-slate-900">{r.title}</h3>
+                <p className="text-sm text-slate-600 mt-1">{r.body}</p>
+              </div>
+            </div>
+          ))}
+        </div>
+      </section>
+
+      <footer className="border-t border-slate-200">
+        <div className="max-w-5xl mx-auto px-6 py-8 flex flex-col sm:flex-row items-center justify-between gap-4">
+          <Brand />
+          <p className="text-sm text-slate-500">
+            © {new Date().getFullYear()} powagent — hire on how people actually work.
+          </p>
+        </div>
+      </footer>
     </main>
   );
 }

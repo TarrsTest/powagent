@@ -63,6 +63,9 @@ export default async function Home() {
             {user ? 'Open dashboard' : 'Get started'}
             <FontAwesomeIcon icon={faArrowRight} className="w-3.5 h-3.5" />
           </Link>
+          <Link href="/tasks" className="btn btn-ghost">
+            Browse open tasks
+          </Link>
         </div>
       </section>
 

@@ -53,7 +53,7 @@ $$;
 -- organizations
 -- ---------------------------------------------------------------------------
 
-create table organizations (
+create table if not exists organizations (
   id uuid primary key default gen_random_uuid(),
   name text not null,
   created_at timestamptz not null default now(),
@@ -64,7 +64,7 @@ create table organizations (
 -- users — mirrors auth.users, adds role + org. One table, role-discriminated.
 -- ---------------------------------------------------------------------------
 
-create table users (
+create table if not exists users (
   id uuid primary key references auth.users(id) on delete cascade,
   org_id uuid references organizations(id) on delete set null,
   role text not null default 'candidate' check (role in ('recruiter','candidate')),
@@ -94,7 +94,7 @@ create trigger on_auth_user_created
 -- jobs / tasks
 -- ---------------------------------------------------------------------------
 
-create table jobs (
+create table if not exists jobs (
   id uuid primary key default gen_random_uuid(),
   org_id uuid not null references organizations(id) on delete cascade,
   title text not null,
@@ -104,7 +104,7 @@ create table jobs (
   updated_at timestamptz not null default now()
 );
 
-create table tasks (
+create table if not exists tasks (
   id uuid primary key default gen_random_uuid(),
   job_id uuid not null references jobs(id) on delete cascade,
   title text not null,
@@ -116,13 +116,13 @@ create table tasks (
   updated_at timestamptz not null default now()
 );
 
-create index tasks_job_id_idx on tasks(job_id);
+create index if not exists tasks_job_id_idx on tasks(job_id);
 
 -- ---------------------------------------------------------------------------
 -- submissions — candidate's task output. Content is immutable (append-only).
 -- ---------------------------------------------------------------------------
 
-create table submissions (
+create table if not exists submissions (
   id uuid primary key default gen_random_uuid(),
   task_id uuid not null references tasks(id) on delete cascade,
   candidate_id uuid not null references users(id) on delete cascade,
@@ -138,8 +138,8 @@ create table submissions (
   updated_at timestamptz not null default now()
 );
 
-create index submissions_task_id_idx on submissions(task_id);
-create index submissions_candidate_id_idx on submissions(candidate_id);
+create index if not exists submissions_task_id_idx on submissions(task_id);
+create index if not exists submissions_candidate_id_idx on submissions(candidate_id);
 
 -- Block mutation of content fields after insert; status/updated_at may change.
 create or replace function submissions_content_immutable() returns trigger
@@ -155,6 +155,7 @@ begin
 end;
 $$;
 
+drop trigger if exists submissions_immutable on submissions;
 create trigger submissions_immutable
   before update on submissions
   for each row execute function submissions_content_immutable();
@@ -164,7 +165,7 @@ create trigger submissions_immutable
 -- Stored separately so async/failed url ingest never blocks the submission.
 -- ---------------------------------------------------------------------------
 
-create table conversation_artifacts (
+create table if not exists conversation_artifacts (
   id uuid primary key default gen_random_uuid(),
   submission_id uuid not null references submissions(id) on delete cascade,
   source_type text not null check (source_type in ('url','markdown')),
@@ -177,14 +178,14 @@ create table conversation_artifacts (
   updated_at timestamptz not null default now()
 );
 
-create index conversation_artifacts_submission_id_idx
+create index if not exists conversation_artifacts_submission_id_idx
   on conversation_artifacts(submission_id);
 
 -- ---------------------------------------------------------------------------
 -- rubrics — HR-supplied evaluation prompt / scoring criteria.
 -- ---------------------------------------------------------------------------
 
-create table rubrics (
+create table if not exists rubrics (
   id uuid primary key default gen_random_uuid(),
   org_id uuid not null references organizations(id) on delete cascade,
   name text not null,
@@ -194,14 +195,14 @@ create table rubrics (
   updated_at timestamptz not null default now()
 );
 
-create index rubrics_org_id_idx on rubrics(org_id);
+create index if not exists rubrics_org_id_idx on rubrics(org_id);
 
 -- ---------------------------------------------------------------------------
 -- evaluations — result of one rubric applied to one submission. Append-only:
 -- a finished (done) evaluation is frozen; re-evaluating creates a new row.
 -- ---------------------------------------------------------------------------
 
-create table evaluations (
+create table if not exists evaluations (
   id uuid primary key default gen_random_uuid(),
   submission_id uuid not null references submissions(id) on delete cascade,
   rubric_id uuid not null references rubrics(id) on delete cascade,
@@ -218,8 +219,8 @@ create table evaluations (
   updated_at timestamptz not null default now()
 );
 
-create index evaluations_submission_id_idx on evaluations(submission_id);
-create index evaluations_rubric_id_idx on evaluations(rubric_id);
+create index if not exists evaluations_submission_id_idx on evaluations(submission_id);
+create index if not exists evaluations_rubric_id_idx on evaluations(rubric_id);
 
 -- A 'done' evaluation is frozen. Status may still move queued->running->done/error.
 create or replace function evaluations_freeze_when_done() returns trigger
@@ -232,6 +233,7 @@ begin
 end;
 $$;
 
+drop trigger if exists evaluations_immutable on evaluations;
 create trigger evaluations_immutable
   before update on evaluations
   for each row execute function evaluations_freeze_when_done();
@@ -240,7 +242,7 @@ create trigger evaluations_immutable
 -- api_keys — hashed keys for the two-sided REST API. Never store plaintext.
 -- ---------------------------------------------------------------------------
 
-create table api_keys (
+create table if not exists api_keys (
   id uuid primary key default gen_random_uuid(),
   owner_type text not null check (owner_type in ('candidate','org')),
   owner_id uuid not null,               -- users.id (candidate) or organizations.id (org)
@@ -253,28 +255,37 @@ create table api_keys (
   updated_at timestamptz not null default now()
 );
 
-create index api_keys_owner_idx on api_keys(owner_type, owner_id);
+create index if not exists api_keys_owner_idx on api_keys(owner_type, owner_id);
 
 -- ---------------------------------------------------------------------------
 -- updated_at triggers (all tables)
 -- ---------------------------------------------------------------------------
 
+drop trigger if exists set_updated_at on organizations;
 create trigger set_updated_at before update on organizations
   for each row execute function set_updated_at();
+drop trigger if exists set_updated_at on users;
 create trigger set_updated_at before update on users
   for each row execute function set_updated_at();
+drop trigger if exists set_updated_at on jobs;
 create trigger set_updated_at before update on jobs
   for each row execute function set_updated_at();
+drop trigger if exists set_updated_at on tasks;
 create trigger set_updated_at before update on tasks
   for each row execute function set_updated_at();
+drop trigger if exists set_updated_at on submissions;
 create trigger set_updated_at before update on submissions
   for each row execute function set_updated_at();
+drop trigger if exists set_updated_at on conversation_artifacts;
 create trigger set_updated_at before update on conversation_artifacts
   for each row execute function set_updated_at();
+drop trigger if exists set_updated_at on rubrics;
 create trigger set_updated_at before update on rubrics
   for each row execute function set_updated_at();
+drop trigger if exists set_updated_at on evaluations;
 create trigger set_updated_at before update on evaluations
   for each row execute function set_updated_at();
+drop trigger if exists set_updated_at on api_keys;
 create trigger set_updated_at before update on api_keys
   for each row execute function set_updated_at();
 
@@ -293,25 +304,31 @@ alter table evaluations           enable row level security;
 alter table api_keys              enable row level security;
 
 -- organizations: members read their own org.
+drop policy if exists "org: read own" on organizations;
 create policy "org: read own" on organizations for select
   using (id = app_user_org());
 
 -- users: read self; recruiters read members of their org.
+drop policy if exists "users: read self" on users;
 create policy "users: read self" on users for select
   using (id = auth.uid()
          or (app_user_role() = 'recruiter' and org_id = app_user_org()));
+drop policy if exists "users: update self" on users;
 create policy "users: update self" on users for update
   using (id = auth.uid());
 
 -- jobs: recruiters manage their org's jobs; candidates read open jobs.
+drop policy if exists "jobs: recruiter manage own org" on jobs;
 create policy "jobs: recruiter manage own org" on jobs for all
   using (app_user_role() = 'recruiter' and org_id = app_user_org())
   with check (app_user_role() = 'recruiter' and org_id = app_user_org());
+drop policy if exists "jobs: candidate read open" on jobs;
 create policy "jobs: candidate read open" on jobs for select
   using (status = 'open');
 
 -- tasks: recruiters manage tasks under their org's jobs; candidates read tasks
 -- of open jobs.
+drop policy if exists "tasks: recruiter manage own org" on tasks;
 create policy "tasks: recruiter manage own org" on tasks for all
   using (exists (
     select 1 from jobs j
@@ -321,16 +338,20 @@ create policy "tasks: recruiter manage own org" on tasks for all
     select 1 from jobs j
     where j.id = tasks.job_id
       and app_user_role() = 'recruiter' and j.org_id = app_user_org()));
+drop policy if exists "tasks: candidate read open" on tasks;
 create policy "tasks: candidate read open" on tasks for select
   using (exists (
     select 1 from jobs j where j.id = tasks.job_id and j.status = 'open'));
 
 -- submissions: candidates read/insert their own; recruiters read submissions
 -- for tasks under their org.
+drop policy if exists "submissions: candidate read own" on submissions;
 create policy "submissions: candidate read own" on submissions for select
   using (candidate_id = auth.uid());
+drop policy if exists "submissions: candidate insert own" on submissions;
 create policy "submissions: candidate insert own" on submissions for insert
   with check (candidate_id = auth.uid());
+drop policy if exists "submissions: recruiter read own org" on submissions;
 create policy "submissions: recruiter read own org" on submissions for select
   using (exists (
     select 1 from tasks t join jobs j on j.id = t.job_id
@@ -338,6 +359,7 @@ create policy "submissions: recruiter read own org" on submissions for select
       and app_user_role() = 'recruiter' and j.org_id = app_user_org()));
 
 -- conversation_artifacts: visibility follows the parent submission.
+drop policy if exists "artifacts: candidate own" on conversation_artifacts;
 create policy "artifacts: candidate own" on conversation_artifacts for all
   using (exists (
     select 1 from submissions s
@@ -347,6 +369,7 @@ create policy "artifacts: candidate own" on conversation_artifacts for all
     select 1 from submissions s
     where s.id = conversation_artifacts.submission_id
       and s.candidate_id = auth.uid()));
+drop policy if exists "artifacts: recruiter read own org" on conversation_artifacts;
 create policy "artifacts: recruiter read own org" on conversation_artifacts for select
   using (exists (
     select 1 from submissions s
@@ -356,12 +379,14 @@ create policy "artifacts: recruiter read own org" on conversation_artifacts for 
       and app_user_role() = 'recruiter' and j.org_id = app_user_org()));
 
 -- rubrics: recruiters manage their org's rubrics.
+drop policy if exists "rubrics: recruiter manage own org" on rubrics;
 create policy "rubrics: recruiter manage own org" on rubrics for all
   using (app_user_role() = 'recruiter' and org_id = app_user_org())
   with check (app_user_role() = 'recruiter' and org_id = app_user_org());
 
 -- evaluations: recruiters of the owning org read (default: not visible to
 -- candidates — spec §9.5). Writes go through the service-role API path.
+drop policy if exists "evaluations: recruiter read own org" on evaluations;
 create policy "evaluations: recruiter read own org" on evaluations for select
   using (exists (
     select 1 from submissions s
@@ -371,8 +396,10 @@ create policy "evaluations: recruiter read own org" on evaluations for select
       and app_user_role() = 'recruiter' and j.org_id = app_user_org()));
 
 -- api_keys: owner reads their own key metadata (never the raw key — not stored).
+drop policy if exists "api_keys: candidate own" on api_keys;
 create policy "api_keys: candidate own" on api_keys for select
   using (owner_type = 'candidate' and owner_id = auth.uid());
+drop policy if exists "api_keys: org own" on api_keys;
 create policy "api_keys: org own" on api_keys for select
   using (owner_type = 'org' and owner_id = app_user_org()
          and app_user_role() = 'recruiter');

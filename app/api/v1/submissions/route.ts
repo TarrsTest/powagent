@@ -3,6 +3,7 @@ import { createServiceClient } from '@/lib/supabase/service';
 import { json, err, readJson } from '@/lib/http';
 import { rateLimit } from '@/lib/ratelimit';
 import { ingestConversation } from '@/lib/ingest';
+import { checkSubmissionAllowed } from '@/lib/submissionRules';
 
 const RESULT_CAP = 100_000; // chars
 
@@ -41,24 +42,25 @@ export async function POST(req: Request) {
   // Task must exist and belong to an open job.
   const { data: task, error: taskErr } = await db
     .from('tasks')
-    .select('id, max_submissions_per_candidate, jobs!inner(status)')
+    .select('id, deadline_at, max_submissions_per_candidate, jobs!inner(status)')
     .eq('id', taskId)
     .eq('jobs.status', 'open')
     .maybeSingle();
   if (taskErr) return err(500, taskErr.message);
   if (!task) return err(404, 'task not found or not open');
 
-  // Optional per-candidate submission cap.
-  if (task.max_submissions_per_candidate != null) {
-    const { count } = await db
-      .from('submissions')
-      .select('id', { count: 'exact', head: true })
-      .eq('task_id', taskId)
-      .eq('candidate_id', key.ownerId);
-    if ((count ?? 0) >= task.max_submissions_per_candidate) {
-      return err(409, 'submission limit reached for this task');
-    }
-  }
+  // Deadline + per-candidate cap. Decided by lib/submissionRules, which the UI
+  // Server Action also calls — one implementation, so the two entry points
+  // cannot drift apart again (PRD §9.9).
+  const { count, error: countErr } = await db
+    .from('submissions')
+    .select('id', { count: 'exact', head: true })
+    .eq('task_id', taskId)
+    .eq('candidate_id', key.ownerId);
+  if (countErr) return err(500, countErr.message);
+
+  const denial = checkSubmissionAllowed(task, count ?? 0);
+  if (denial) return err(denial.status, denial.message, { code: denial.code });
 
   // Insert the submission first — never blocked by transcript ingest.
   const { data: sub, error: subErr } = await db

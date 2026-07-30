@@ -1,15 +1,18 @@
 import Link from 'next/link';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
-import { faPaperPlane, faClock, faHandshake, faCircleCheck } from '@fortawesome/free-solid-svg-icons';
+import { faPaperPlane, faClock, faHandshake, faCircleCheck, faLock } from '@fortawesome/free-solid-svg-icons';
 import { createClient } from '@/lib/supabase/server';
+import { checkSubmissionAllowed } from '@/lib/submissionRules';
 import Brand from '@/components/Brand';
-import { submitTask, acceptTask } from './actions';
+import { acceptTask } from './actions';
+import SubmitWorkForm from './SubmitWorkForm';
 
 type Task = {
   id: string;
   title: string;
   brief_md: string;
   deadline_at: string | null;
+  max_submissions_per_candidate: number | null;
   jobs: { title: string };
 };
 type Sub = { id: string; task_id: string; status: string; submitted_at: string };
@@ -46,7 +49,9 @@ export default async function TasksPage() {
 
   const { data: tasks } = await supabase
     .from('tasks')
-    .select('id, title, brief_md, deadline_at, jobs!inner(title, status)')
+    .select(
+      'id, title, brief_md, deadline_at, max_submissions_per_candidate, jobs!inner(title, status)',
+    )
     .eq('jobs.status', 'open')
     .order('created_at', { ascending: false })
     .limit(100);
@@ -96,6 +101,9 @@ export default async function TasksPage() {
           {(tasks as Task[] | null)?.map((t) => {
             const mine = subsByTask.get(t.id) ?? [];
             const isAccepted = acceptedTasks.has(t.id);
+            // Same rules the Server Action enforces, applied here so a closed
+            // task explains itself instead of offering a form that will refuse.
+            const denial = userId ? checkSubmissionAllowed(t, mine.length) : null;
             return (
               <li key={t.id} className="card p-6">
                 <div className="flex items-center justify-between gap-3">
@@ -173,26 +181,21 @@ export default async function TasksPage() {
                   </ul>
                 )}
 
-                {userId ? (
-                  <details className="mt-3 border-t border-slate-100 pt-3">
-                    <summary className="text-sm font-semibold cursor-pointer text-sky-700 select-none">Submit work</summary>
-                    <form action={submitTask} className="space-y-2 mt-3">
-                      <input type="hidden" name="task_id" value={t.id} />
-                      <textarea name="result_md" required rows={3} placeholder="Your result / deliverable (markdown)" className="field-area" />
-                      <textarea name="conversation_md" rows={3} placeholder="Paste your agent conversation transcript (markdown)" className="field-area" />
-                      <div className="text-xs text-slate-400 text-center">— or —</div>
-                      <input name="conversation_url" type="url" placeholder="https://link-to-your-agent-conversation" className="field h-9" />
-                      <button className="btn btn-primary btn-sm">
-                        <FontAwesomeIcon icon={faPaperPlane} className="w-3 h-3" /> Submit
-                      </button>
-                    </form>
-                  </details>
-                ) : (
+                {!userId ? (
                   <div className="mt-3 border-t border-slate-100 pt-3">
                     <Link href="/login" className="btn btn-primary btn-sm">
                       <FontAwesomeIcon icon={faPaperPlane} className="w-3 h-3" /> Sign in to submit
                     </Link>
                   </div>
+                ) : denial ? (
+                  <div className="mt-3 border-t border-slate-100 pt-3">
+                    <p className="text-sm text-slate-500 flex items-start gap-2">
+                      <FontAwesomeIcon icon={faLock} className="w-3.5 h-3.5 mt-0.5 shrink-0 text-slate-400" />
+                      {denial.message}
+                    </p>
+                  </div>
+                ) : (
+                  <SubmitWorkForm taskId={t.id} />
                 )}
               </li>
             );

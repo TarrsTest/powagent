@@ -1,9 +1,11 @@
 import { test, describe } from 'node:test';
 import assert from 'node:assert/strict';
 import {
+  countEvaluatedSubmissions,
   latestDoneBySubmission,
   rankCandidates,
   scoreOf,
+  topCandidatesAcrossTasks,
   type RankableEvaluation,
   type RankableSubmission,
 } from '../lib/leaderboard.ts';
@@ -192,5 +194,144 @@ describe('rankCandidates — ordering and payload', () => {
 
   test('empty input is an empty leaderboard', () => {
     assert.deepEqual(rankCandidates([], []), []);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Recruiter overview aggregates. Both rules below are ones a dashboard gets
+// wrong by accident: counting evaluation rows instead of evaluated submissions,
+// and letting one strong candidate occupy the whole "top candidates" list.
+// ---------------------------------------------------------------------------
+
+describe('countEvaluatedSubmissions', () => {
+  test('counts submissions, not evaluation rows', () => {
+    const subs = [{ id: 's1' }, { id: 's2' }];
+    const evs = [
+      ev('s1', 'done', '2026-07-16T20:00:00+00:00', 70),
+      ev('s1', 'done', '2026-07-17T20:00:00+00:00', 80), // re-run, same submission
+    ];
+    assert.equal(countEvaluatedSubmissions(subs, evs), 1);
+  });
+
+  test('a submission with only failed or pending runs is not evaluated', () => {
+    const subs = [{ id: 's1' }];
+    assert.equal(
+      countEvaluatedSubmissions(subs, [
+        ev('s1', 'error', '2026-07-17T09:00:00+00:00'),
+        ev('s1', 'running', '2026-07-17T09:05:00+00:00'),
+        ev('s1', 'queued', null),
+      ]),
+      0,
+    );
+  });
+
+  test('a later failure does not un-evaluate an earlier success', () => {
+    const subs = [{ id: 's1' }];
+    assert.equal(
+      countEvaluatedSubmissions(subs, [
+        ev('s1', 'done', '2026-07-16T08:00:00+00:00', 40),
+        ev('s1', 'error', '2026-07-17T09:00:00+00:00'),
+      ]),
+      1,
+    );
+  });
+
+  test('evaluations for submissions outside the set are ignored', () => {
+    assert.equal(
+      countEvaluatedSubmissions([{ id: 's1' }], [ev('s-other', 'done', '2026-07-17T09:00:00+00:00', 90)]),
+      0,
+    );
+  });
+
+  test('no submissions and no evaluations count as zero', () => {
+    assert.equal(countEvaluatedSubmissions([], []), 0);
+  });
+});
+
+describe('topCandidatesAcrossTasks', () => {
+  const tasks = [
+    { id: 't1', title: 'Webhook idempotency' },
+    { id: 't2', title: 'Checkout race' },
+  ];
+  const taskSub = (id: string, candidateId: string, taskId: string, email: string | null = null) => ({
+    ...sub(id, candidateId, email),
+    task_id: taskId,
+  });
+
+  test('a candidate leading two tasks is listed once, at their best score', () => {
+    const top = topCandidatesAcrossTasks(
+      tasks,
+      [taskSub('s1', 'alice', 't1', 'alice@e'), taskSub('s2', 'alice', 't2', 'alice@e')],
+      [
+        ev('s1', 'done', '2026-07-16T20:00:00+00:00', 71),
+        ev('s2', 'done', '2026-07-16T21:00:00+00:00', 93),
+      ],
+    );
+    assert.equal(top.length, 1, 'one person is one row');
+    assert.equal(top[0].score, 93);
+    assert.equal(top[0].taskTitle, 'Checkout race', 'reports the task the best score came from');
+  });
+
+  test('scores from different tasks are never pooled into one ranking', () => {
+    // Two separate tasks, one candidate each. Both must appear.
+    const top = topCandidatesAcrossTasks(
+      tasks,
+      [taskSub('s1', 'alice', 't1'), taskSub('s2', 'ben', 't2')],
+      [
+        ev('s1', 'done', '2026-07-16T20:00:00+00:00', 60),
+        ev('s2', 'done', '2026-07-16T21:00:00+00:00', 90),
+      ],
+    );
+    assert.deepEqual(
+      top.map((c) => [c.candidateId, c.score, c.taskId]),
+      [
+        ['ben', 90, 't2'],
+        ['alice', 60, 't1'],
+      ],
+    );
+  });
+
+  test('uses the latest done evaluation, like the per-task leaderboard', () => {
+    const top = topCandidatesAcrossTasks(
+      [tasks[0]],
+      [taskSub('s1', 'alice', 't1')],
+      [
+        ev('s1', 'done', '2026-07-16T20:00:00+00:00', 99),
+        ev('s1', 'done', '2026-07-17T20:00:00+00:00', 55),
+      ],
+    );
+    assert.equal(top[0].score, 55);
+  });
+
+  test('unscored candidates are omitted', () => {
+    const top = topCandidatesAcrossTasks(
+      tasks,
+      [taskSub('s1', 'alice', 't1'), taskSub('s2', 'ben', 't2')],
+      [ev('s1', 'done', '2026-07-16T20:00:00+00:00', 60), ev('s2', 'error', '2026-07-16T21:00:00+00:00')],
+    );
+    assert.deepEqual(top.map((c) => c.candidateId), ['alice']);
+  });
+
+  test('respects the limit', () => {
+    const many = ['a', 'b', 'c', 'd', 'e', 'f'];
+    const top = topCandidatesAcrossTasks(
+      [tasks[0]],
+      many.map((c, i) => taskSub(`s${i}`, c, 't1')),
+      many.map((_, i) => ev(`s${i}`, 'done', '2026-07-16T20:00:00+00:00', 50 + i)),
+      3,
+    );
+    assert.equal(top.length, 3);
+    assert.deepEqual(top.map((c) => c.score), [55, 54, 53]);
+  });
+
+  test('a task with no submissions contributes nothing', () => {
+    const top = topCandidatesAcrossTasks(tasks, [taskSub('s1', 'alice', 't1')], [
+      ev('s1', 'done', '2026-07-16T20:00:00+00:00', 60),
+    ]);
+    assert.equal(top.length, 1);
+  });
+
+  test('empty org is an empty list, not a crash', () => {
+    assert.deepEqual(topCandidatesAcrossTasks([], [], []), []);
   });
 });

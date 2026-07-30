@@ -63,6 +63,34 @@ export const hasReachedSubmissionCap = (
  * this task. Deadline is checked first: once a task is closed, the cap is
  * irrelevant and the deadline is the more useful thing to tell someone.
  */
+export type DeadlineTask = { deadline_at: string | null };
+
+/**
+ * Tasks whose deadline is still ahead, soonest first — "what closes next" for
+ * the recruiter overview.
+ *
+ * Tasks with no deadline are omitted because nothing is due, and past ones are
+ * omitted because they are no longer upcoming; `isPastDeadline` tells you about
+ * those separately. Sorting is by parsed timestamp rather than string order, so
+ * a mix of offset formats cannot silently misorder the list.
+ */
+export const upcomingDeadlines = <T extends DeadlineTask>(
+  tasks: T[],
+  now: Date = new Date(),
+  limit = 5,
+): { task: T; deadlineAt: string; msRemaining: number }[] =>
+  tasks
+    .flatMap((task) => {
+      if (!task.deadline_at) return [];
+      const at = Date.parse(task.deadline_at);
+      if (Number.isNaN(at)) return [];
+      const msRemaining = at - now.getTime();
+      if (msRemaining < 0) return [];
+      return [{ task, deadlineAt: task.deadline_at, msRemaining }];
+    })
+    .sort((a, b) => a.msRemaining - b.msRemaining)
+    .slice(0, limit);
+
 export const checkSubmissionAllowed = (
   limits: TaskLimits,
   existingCount: number,

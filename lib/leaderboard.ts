@@ -94,3 +94,71 @@ export const rankCandidates = <E extends RankableEvaluation>(
 
   return [...best.values()].sort((a, b) => b.score - a.score);
 };
+
+/**
+ * How many of these submissions have actually been evaluated.
+ *
+ * Counts by the same rule the leaderboard ranks by — a submission whose only
+ * evaluation rows are queued, running or errored is NOT evaluated, no matter how
+ * many rows it has. Counting evaluation rows instead would tell a recruiter that
+ * work is scored when it failed.
+ */
+export const countEvaluatedSubmissions = (
+  submissions: { id: string }[],
+  evaluations: RankableEvaluation[],
+): number => {
+  const latest = latestDoneBySubmission(evaluations);
+  return submissions.filter((s) => latest.has(s.id)).length;
+};
+
+export type TaskRef = { id: string; title: string };
+
+export type OrgTopCandidate<E extends RankableEvaluation> = {
+  candidateId: string;
+  email: string | null;
+  taskId: string;
+  taskTitle: string;
+  submissionId: string;
+  score: number;
+  evaluation: E;
+};
+
+/**
+ * The org's strongest candidates across every task, for the recruiter overview.
+ *
+ * Ranking is per task — a score only means something relative to the task and
+ * rubric it came from, so submissions are never pooled across tasks. The results
+ * are then merged, and a candidate who appears on more than one task is listed
+ * ONCE at their best score, with the task it came from. That is the same "one row
+ * per candidate" rule rankCandidates enforces, applied one level up: without it
+ * a strong candidate would crowd out everyone else on this list.
+ */
+export const topCandidatesAcrossTasks = <E extends RankableEvaluation>(
+  tasks: TaskRef[],
+  submissions: (RankableSubmission & { task_id: string })[],
+  evaluations: E[],
+  limit = 5,
+): OrgTopCandidate<E>[] => {
+  const best = new Map<string, OrgTopCandidate<E>>();
+
+  for (const task of tasks) {
+    const taskSubs = submissions.filter((s) => s.task_id === task.id);
+    if (taskSubs.length === 0) continue;
+
+    for (const ranked of rankCandidates(taskSubs, evaluations)) {
+      const cur = best.get(ranked.candidateId);
+      if (cur && cur.score >= ranked.score) continue;
+      best.set(ranked.candidateId, {
+        candidateId: ranked.candidateId,
+        email: ranked.email,
+        taskId: task.id,
+        taskTitle: task.title,
+        submissionId: ranked.submissionId,
+        score: ranked.score,
+        evaluation: ranked.evaluation,
+      });
+    }
+  }
+
+  return [...best.values()].sort((a, b) => b.score - a.score).slice(0, limit);
+};

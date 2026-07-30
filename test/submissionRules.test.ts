@@ -1,6 +1,7 @@
 import { test, describe } from 'node:test';
 import assert from 'node:assert/strict';
 import {
+  upcomingDeadlines,
   checkSubmissionAllowed,
   hasReachedSubmissionCap,
   isPastDeadline,
@@ -134,5 +135,64 @@ describe('checkSubmissionAllowed', () => {
     const fromApi = checkSubmissionAllowed(limits, 0, NOW);
     assert.deepEqual(fromUi, fromApi);
     assert.equal(fromUi?.code, 'deadline_passed');
+  });
+});
+
+// The recruiter overview's "Closing soon" widget. Getting this wrong shows a
+// recruiter a deadline that has already passed, or hides the one about to.
+describe('upcomingDeadlines', () => {
+  const t = (id: string, deadline_at: string | null) => ({ id, deadline_at });
+
+  test('keeps only future deadlines, soonest first', () => {
+    const out = upcomingDeadlines(
+      [
+        t('far', '2026-08-30T12:00:00.000Z'),
+        t('past', '2026-07-01T12:00:00.000Z'),
+        t('soon', '2026-07-30T18:00:00.000Z'),
+      ],
+      NOW,
+    );
+    assert.deepEqual(out.map((d) => d.task.id), ['soon', 'far']);
+  });
+
+  test('tasks without a deadline are omitted — nothing is due', () => {
+    assert.deepEqual(upcomingDeadlines([t('none', null)], NOW), []);
+  });
+
+  test('an unparseable deadline is skipped rather than sorted to the front', () => {
+    const out = upcomingDeadlines([t('bad', 'whenever'), t('ok', '2026-08-01T00:00:00.000Z')], NOW);
+    assert.deepEqual(out.map((d) => d.task.id), ['ok']);
+  });
+
+  test('the exact deadline instant still counts as upcoming', () => {
+    const out = upcomingDeadlines([t('now', '2026-07-30T12:00:00.000Z')], NOW);
+    assert.equal(out.length, 1);
+    assert.equal(out[0].msRemaining, 0);
+  });
+
+  test('reports time remaining, not elapsed', () => {
+    const out = upcomingDeadlines([t('x', '2026-07-30T14:00:00.000Z')], NOW);
+    assert.equal(out[0].msRemaining, 2 * 3600_000);
+  });
+
+  test('sorts by instant, so mixed offset formats cannot misorder', () => {
+    const out = upcomingDeadlines(
+      [t('utc', '2026-07-30T20:00:00.000Z'), t('offset', '2026-07-30T14:00:00+00:00')],
+      NOW,
+    );
+    assert.deepEqual(out.map((d) => d.task.id), ['offset', 'utc']);
+  });
+
+  test('respects the limit', () => {
+    const out = upcomingDeadlines(
+      ['2026-08-01', '2026-08-02', '2026-08-03', '2026-08-04'].map((d, i) => t(`t${i}`, `${d}T00:00:00.000Z`)),
+      NOW,
+      2,
+    );
+    assert.deepEqual(out.map((d) => d.task.id), ['t0', 't1']);
+  });
+
+  test('no tasks is an empty list', () => {
+    assert.deepEqual(upcomingDeadlines([], NOW), []);
   });
 });

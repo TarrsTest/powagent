@@ -1,0 +1,18 @@
+{
+  "extends": ["next/core-web-vitals", "next/typescript"],
+  "ignorePatterns": [
+    "supabase/functions/**",
+    ".next/**",
+    "next-env.d.ts"
+  ],
+  "rules": {
+    "@typescript-eslint/no-unused-vars": [
+      "warn",
+      {
+        "argsIgnorePattern": "^_",
+        "varsIgnorePattern": "^_",
+        "caughtErrorsIgnorePattern": "^_"
+      }
+    ]
+  }
+}

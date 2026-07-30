@@ -1,9 +1,29 @@
 import { requireScope, isResponse } from '@/lib/guard';
 import { createServiceClient } from '@/lib/supabase/service';
 import { json, err } from '@/lib/http';
+import { rankCandidates, type RankableEvaluation } from '@/lib/leaderboard';
 
-// GET /v1/evaluations?task_id=... — org pulls evaluation results for one of its
-// tasks (sorted by overall score desc for easy candidate ranking).
+type SubmissionRow = {
+  id: string;
+  candidate_id: string;
+  submitted_at: string;
+  candidate: { email: string | null } | null;
+};
+
+/**
+ * GET /v1/evaluations?task_id=... — evaluation results for one of the caller's
+ * tasks.
+ *
+ * Returns two things, because they answer different questions:
+ *  · `ranking`     — one entry per CANDIDATE, highest score first. Previously
+ *                    this endpoint sorted every evaluation row by score, so a
+ *                    candidate whose submission had been re-evaluated occupied
+ *                    several places at once and queued/errored rows (no score)
+ *                    were ranked as if they'd scored below zero. Ranking rules
+ *                    now live in lib/leaderboard.ts, shared with the UI.
+ *  · `evaluations` — every row, newest run first, including queued/running/
+ *                    error, for status polling and debugging.
+ */
 export async function GET(req: Request) {
   const key = await requireScope(req, 'org', 'evaluations:read');
   if (isResponse(key)) return key;
@@ -24,29 +44,35 @@ export async function GET(req: Request) {
   if (taskErr) return err(500, taskErr.message);
   if (!task) return err(404, 'task not found in your organization');
 
-  // Submissions for this task → their evaluations.
   const { data: subs, error: subErr } = await db
     .from('submissions')
-    .select('id')
+    .select('id, candidate_id, submitted_at, candidate:users!submissions_candidate_id_fkey(email)')
     .eq('task_id', taskId);
   if (subErr) return err(500, subErr.message);
-  const subIds = (subs ?? []).map((s) => s.id);
-  if (subIds.length === 0) return json({ evaluations: [] });
+
+  const submissions = (subs as unknown as SubmissionRow[] | null) ?? [];
+  if (submissions.length === 0) return json({ ranking: [], evaluations: [] });
 
   const { data, error } = await db
     .from('evaluations')
     .select('id, submission_id, rubric_id, model, status, output_json, content_hash, ran_at, error')
-    .in('submission_id', subIds)
+    .in(
+      'submission_id',
+      submissions.map((s) => s.id),
+    )
     .order('ran_at', { ascending: false });
   if (error) return err(500, error.message);
 
-  // Rank done evaluations by overall score desc.
-  const evaluations = (data ?? []).sort((a, b) => {
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const sa = (a.output_json as any)?.score ?? -1;
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const sb = (b.output_json as any)?.score ?? -1;
-    return sb - sa;
-  });
-  return json({ evaluations });
+  const evaluations = (data ?? []) as (RankableEvaluation & { id: string })[];
+
+  const ranking = rankCandidates(submissions, evaluations).map((r, i) => ({
+    rank: i + 1,
+    candidate_id: r.candidateId,
+    email: r.email,
+    submission_id: r.submissionId,
+    score: r.score,
+    evaluation: r.evaluation,
+  }));
+
+  return json({ ranking, evaluations });
 }

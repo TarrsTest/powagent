@@ -1,18 +1,46 @@
 import { redirect } from 'next/navigation';
 import Link from 'next/link';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
-import { faBriefcase, faListCheck, faClipboardCheck, faArrowRight, faHandshake } from '@fortawesome/free-solid-svg-icons';
+import {
+  faBriefcase, faListCheck, faClipboardCheck, faArrowRight, faHandshake,
+  faUsers, faInbox, faCircleCheck, faRankingStar, faClock, faFlag,
+} from '@fortawesome/free-solid-svg-icons';
 import { getProfile } from '@/lib/profile';
 import { createClient } from '@/lib/supabase/server';
+import {
+  countEvaluatedSubmissions,
+  topCandidatesAcrossTasks,
+  type RankableEvaluation,
+} from '@/lib/leaderboard';
+import { upcomingDeadlines, isPastDeadline } from '@/lib/submissionRules';
 import Brand from '@/components/Brand';
 import { createJob, setJobStatus, addTask, createRubric } from './actions';
 
-type Task = { id: string; title: string; created_at: string };
+type Task = { id: string; title: string; created_at: string; deadline_at: string | null };
 type Job = { id: string; title: string; status: string; tasks: Task[] };
 type Rubric = { id: string; name: string; created_at: string };
+type Submission = {
+  id: string;
+  task_id: string;
+  candidate_id: string;
+  submitted_at: string;
+  candidate: { email: string | null } | null;
+};
 
 const statusBadge = (s: string) =>
   s === 'open' ? 'badge badge-success' : s === 'closed' ? 'badge badge-danger' : 'badge badge-muted';
+
+const scoreTone = (score: number) =>
+  score >= 80 ? 'bg-emerald-500' : score >= 60 ? 'bg-sky-500' : 'bg-amber-500';
+
+/** Coarse on purpose — the exact timestamp lives on the task page. */
+const relative = (ms: number) => {
+  const minutes = Math.round(ms / 60_000);
+  if (minutes < 60) return `in ${Math.max(minutes, 1)}m`;
+  const hours = Math.round(minutes / 60);
+  if (hours < 48) return `in ${hours}h`;
+  return `in ${Math.round(hours / 24)} days`;
+};
 
 export default async function RecruiterPage() {
   const session = await getProfile();
@@ -21,40 +49,218 @@ export default async function RecruiterPage() {
   if (session.profile.role !== 'recruiter' || !session.profile.org_id) redirect('/settings');
   const orgId = session.profile.org_id;
 
-  // Session client. `rubrics: recruiter manage own org` and `acceptances:
-  // recruiter read own org` scope those two on their own.
+  // Session client throughout, so RLS decides what may be read — no service role
+  // on a browser path. Every query still states which rows it WANTS: `jobs/tasks:
+  // candidate read open` are permissive and untargeted, so they match a recruiter
+  // too and permissive policies OR together. Without the filters this dashboard
+  // would count every open job on the platform.
   //
-  // `jobs` needs the explicit org_id below and it is NOT a redundant auth
-  // check: `jobs/tasks: candidate read open` is permissive and untargeted, so
-  // it also matches a recruiter, and permissive policies OR together — without
-  // the filter this dashboard would list every open job on the platform. RLS
-  // still decides what may be read; this decides what we're asking for.
+  // Scale note: the overview reads this org's acceptance / submission /
+  // evaluation rows and aggregates them in memory. Right for an org with tens of
+  // tasks, wrong for one with tens of thousands — at that point this becomes a
+  // database view or an RPC, not a bigger page.
   const supabase = await createClient();
-  const [{ data: jobs }, { data: rubrics }, { data: acceptances }] = await Promise.all([
+  const [{ data: jobsData }, { data: rubrics }, { data: org }] = await Promise.all([
     supabase
       .from('jobs')
-      .select('id, title, status, tasks(id, title, created_at)')
+      .select('id, title, status, tasks(id, title, created_at, deadline_at)')
       .eq('org_id', orgId)
       .order('created_at', { ascending: false }),
     supabase.from('rubrics').select('id, name, created_at').order('created_at', { ascending: false }),
-    supabase.from('task_acceptances').select('task_id'),
+    supabase.from('organizations').select('name').maybeSingle(),
   ]);
 
-  // A1 — how many candidates have picked up each task.
+  const jobs = (jobsData as Job[] | null) ?? [];
+  const tasks = jobs.flatMap((j) => j.tasks ?? []);
+  const taskIds = tasks.map((t) => t.id);
+
+  const [{ data: acceptances }, { data: submissionsData }] = taskIds.length
+    ? await Promise.all([
+        supabase.from('task_acceptances').select('task_id, candidate_id').in('task_id', taskIds),
+        supabase
+          .from('submissions')
+          .select(
+            'id, task_id, candidate_id, submitted_at, ' +
+              'candidate:users!submissions_candidate_id_fkey(email)',
+          )
+          .in('task_id', taskIds),
+      ])
+    : [{ data: [] }, { data: [] }];
+
+  const acceptanceRows = (acceptances as { task_id: string; candidate_id: string }[] | null) ?? [];
+  const submissions = (submissionsData as unknown as Submission[] | null) ?? [];
+
+  const { data: evaluationsData } = submissions.length
+    ? await supabase
+        .from('evaluations')
+        .select('submission_id, status, ran_at, output_json')
+        .in(
+          'submission_id',
+          submissions.map((s) => s.id),
+        )
+    : { data: [] };
+  const evaluations = (evaluationsData as RankableEvaluation[] | null) ?? [];
+
+  // Aggregates. The counting rules that are easy to get wrong live in lib/ and
+  // are tested (an errored evaluation is not "evaluated"; a candidate leading two
+  // tasks is still one candidate). The rest is arithmetic over rows RLS scoped.
+  const openJobs = jobs.filter((j) => j.status === 'open').length;
+  const evaluatedCount = countEvaluatedSubmissions(submissions, evaluations);
+  const engagedCandidates = new Set([
+    ...acceptanceRows.map((a) => a.candidate_id),
+    ...submissions.map((s) => s.candidate_id),
+  ]).size;
+  const ranked = topCandidatesAcrossTasks(tasks, submissions, evaluations, 5);
+  const closingSoon = upcomingDeadlines(tasks, new Date(), 4);
+  const pastDeadline = tasks.filter((t) => isPastDeadline(t.deadline_at)).length;
+
   const acceptCount = new Map<string, number>();
-  for (const a of (acceptances as { task_id: string }[] | null) ?? []) {
-    acceptCount.set(a.task_id, (acceptCount.get(a.task_id) ?? 0) + 1);
-  }
+  for (const a of acceptanceRows) acceptCount.set(a.task_id, (acceptCount.get(a.task_id) ?? 0) + 1);
+  const submissionCount = new Map<string, number>();
+  for (const s of submissions) submissionCount.set(s.task_id, (submissionCount.get(s.task_id) ?? 0) + 1);
+
+  const stats = [
+    { icon: faBriefcase, value: jobs.length, label: 'Jobs', sub: `${openJobs} open` },
+    {
+      icon: faListCheck,
+      value: tasks.length,
+      label: 'Tasks',
+      sub: pastDeadline > 0 ? `${pastDeadline} past deadline` : 'none past deadline',
+    },
+    { icon: faUsers, value: engagedCandidates, label: 'Candidates', sub: 'accepted or submitted' },
+    {
+      icon: faInbox,
+      value: submissions.length,
+      label: 'Submissions',
+      sub: `${acceptanceRows.length} acceptances`,
+    },
+    {
+      icon: faCircleCheck,
+      value: evaluatedCount,
+      label: 'Evaluated',
+      sub: `of ${submissions.length} submission${submissions.length === 1 ? '' : 's'}`,
+    },
+  ];
 
   return (
     <main className="min-h-dvh">
       <nav className="max-w-3xl mx-auto flex items-center justify-between px-6 h-16">
         <Brand href="/dashboard" />
-        <Link href="/settings" className="btn btn-ghost btn-sm">Settings & API keys</Link>
+        <Link href="/settings" className="btn btn-ghost btn-sm">Settings &amp; API keys</Link>
       </nav>
 
       <div className="max-w-3xl mx-auto px-6 py-6 space-y-6">
-        <h1 className="text-2xl font-bold tracking-tight text-slate-900">Recruiter dashboard</h1>
+        <div>
+          <h1 className="text-2xl font-bold tracking-tight text-slate-900">Recruiter dashboard</h1>
+          <p className="text-sm text-slate-500 mt-1">{org?.name ?? 'Your organization'}</p>
+        </div>
+
+        {/* Overview — the whole org at a glance, so nobody has to click through
+            every job to find out whether anything is happening. */}
+        <section className="grid grid-cols-2 sm:grid-cols-5 gap-3">
+          {stats.map((s) => (
+            <div key={s.label} className="card p-4">
+              <FontAwesomeIcon icon={s.icon} className="w-3.5 h-3.5 text-slate-300" />
+              <p className="text-2xl font-extrabold text-slate-900 tabular-nums mt-2 leading-none">
+                {s.value}
+              </p>
+              <p className="text-xs font-semibold text-slate-700 mt-1.5">{s.label}</p>
+              <p className="text-[11px] text-slate-400 leading-tight">{s.sub}</p>
+            </div>
+          ))}
+        </section>
+
+        <div className="grid gap-4 sm:grid-cols-2">
+          {/* Top candidates — same ranking rules as the per-task leaderboard */}
+          <section className="card p-6">
+            <h2 className="font-semibold text-slate-900 mb-1 flex items-center gap-2">
+              <FontAwesomeIcon icon={faRankingStar} className="w-4 h-4 text-sky-700" /> Top candidates
+            </h2>
+            <p className="text-xs text-slate-500 mb-4">Best score per candidate, across all your tasks.</p>
+            {ranked.length === 0 ? (
+              <p className="text-sm text-slate-500">
+                {submissions.length === 0
+                  ? 'No submissions yet — candidates appear here once they submit.'
+                  : 'Nothing scored yet. Open a task and evaluate a submission against a rubric.'}
+              </p>
+            ) : (
+              <ul className="space-y-3">
+                {ranked.map((c, i) => (
+                  <li key={c.candidateId} className="flex items-start gap-3">
+                    <span className="shrink-0 w-4 text-center text-xs font-mono text-slate-400 mt-1">
+                      {i + 1}
+                    </span>
+                    <div className="min-w-0 flex-1">
+                      <div className="flex items-center justify-between gap-2">
+                        <span className="text-sm font-medium text-slate-900 truncate">
+                          {c.email ?? `candidate ${c.candidateId.slice(0, 8)}…`}
+                        </span>
+                        <span className="shrink-0 text-sm font-bold tabular-nums text-slate-900">
+                          {c.score}
+                        </span>
+                      </div>
+                      <div className="mt-1 h-1 rounded-full bg-slate-100 overflow-hidden">
+                        <div
+                          className={`h-full rounded-full ${scoreTone(c.score)}`}
+                          style={{ width: `${c.score}%` }}
+                        />
+                      </div>
+                      <div className="flex items-center gap-1.5 mt-1 flex-wrap">
+                        <Link
+                          href={`/recruiter/tasks/${c.taskId}/leaderboard`}
+                          className="text-[11px] text-slate-500 hover:text-sky-700 truncate"
+                        >
+                          {c.taskTitle}
+                        </Link>
+                        {c.evaluation.output_json?.flags?.map((f) => (
+                          <span key={f} className="badge badge-warn">
+                            <FontAwesomeIcon icon={faFlag} className="w-2 h-2" />
+                            {f}
+                          </span>
+                        ))}
+                      </div>
+                    </div>
+                  </li>
+                ))}
+              </ul>
+            )}
+          </section>
+
+          {/* Closing soon */}
+          <section className="card p-6">
+            <h2 className="font-semibold text-slate-900 mb-1 flex items-center gap-2">
+              <FontAwesomeIcon icon={faClock} className="w-4 h-4 text-sky-700" /> Closing soon
+            </h2>
+            <p className="text-xs text-slate-500 mb-4">Tasks that stop accepting submissions next.</p>
+            {closingSoon.length === 0 ? (
+              <p className="text-sm text-slate-500">
+                {tasks.length === 0
+                  ? 'No tasks yet.'
+                  : pastDeadline > 0
+                    ? 'Nothing upcoming — every dated task has already closed.'
+                    : 'No deadlines set. Add one when creating a task if you want a cut-off.'}
+              </p>
+            ) : (
+              <ul className="space-y-2">
+                {closingSoon.map(({ task, msRemaining }) => (
+                  <li key={task.id} className="flex items-center justify-between gap-3">
+                    <Link
+                      href={`/recruiter/tasks/${task.id}`}
+                      className="text-sm text-slate-700 hover:text-sky-700 truncate"
+                    >
+                      {task.title}
+                    </Link>
+                    <span
+                      className={`badge shrink-0 ${msRemaining < 24 * 3600_000 ? 'badge-warn' : 'badge-muted'}`}
+                    >
+                      {relative(msRemaining)}
+                    </span>
+                  </li>
+                ))}
+              </ul>
+            )}
+          </section>
+        </div>
 
         {/* Create job */}
         <section className="card p-6">
@@ -69,11 +275,14 @@ export default async function RecruiterPage() {
             </select>
             <button className="btn btn-primary">Create</button>
           </form>
+          <p className="text-xs text-slate-400 mt-2">
+            Candidates only see tasks under an <span className="font-medium text-slate-500">open</span> job.
+          </p>
         </section>
 
         {/* Jobs + tasks */}
         <section className="space-y-4">
-          {(jobs as Job[] | null)?.map((job) => (
+          {jobs.map((job) => (
             <div key={job.id} className="card p-6">
               <div className="flex items-center justify-between mb-3">
                 <h3 className="font-semibold text-slate-900 flex items-center gap-2">
@@ -92,58 +301,106 @@ export default async function RecruiterPage() {
 
               <ul className="space-y-1 mb-3">
                 {job.tasks?.map((t) => (
-                  <li key={t.id} className="flex items-center gap-2">
-                    <Link href={`/recruiter/tasks/${t.id}`} className="text-sm text-slate-700 hover:text-sky-700 inline-flex items-center gap-1.5">
+                  <li key={t.id} className="flex items-center gap-2 flex-wrap">
+                    <Link
+                      href={`/recruiter/tasks/${t.id}`}
+                      className="text-sm text-slate-700 hover:text-sky-700 inline-flex items-center gap-1.5"
+                    >
                       <FontAwesomeIcon icon={faListCheck} className="w-3 h-3 text-slate-400" />
                       {t.title}
                       <FontAwesomeIcon icon={faArrowRight} className="w-3 h-3 text-slate-300" />
                     </Link>
                     {(acceptCount.get(t.id) ?? 0) > 0 && (
-                      <span className="badge badge-muted" title="candidates working on this task">
+                      <span className="badge badge-muted" title="candidates who accepted this task">
                         <FontAwesomeIcon icon={faHandshake} className="w-2.5 h-2.5" />
                         {acceptCount.get(t.id)}
                       </span>
                     )}
+                    {(submissionCount.get(t.id) ?? 0) > 0 && (
+                      <span className="badge badge-accent" title="submissions received">
+                        <FontAwesomeIcon icon={faInbox} className="w-2.5 h-2.5" />
+                        {submissionCount.get(t.id)}
+                      </span>
+                    )}
+                    {isPastDeadline(t.deadline_at) && (
+                      <span className="badge badge-danger" title="deadline passed — no longer accepting submissions">
+                        closed
+                      </span>
+                    )}
                   </li>
                 ))}
-                {(!job.tasks || job.tasks.length === 0) && <li className="text-xs text-slate-400">No tasks yet.</li>}
+                {(!job.tasks || job.tasks.length === 0) && (
+                  <li className="text-xs text-slate-400">No tasks yet.</li>
+                )}
               </ul>
 
-              <form action={addTask} className="space-y-2 border-t border-slate-100 pt-3">
-                <input type="hidden" name="job_id" value={job.id} />
-                <input name="title" required placeholder="Task title" className="field h-9" />
-                <textarea name="brief_md" required rows={2} placeholder="Task brief (markdown) — describe the AI-agent-completable task" className="field-area" />
-                <div className="flex items-center gap-2">
-                  <label className="text-xs text-slate-500 shrink-0">Candidate feedback</label>
-                  <select name="feedback_visibility" defaultValue="none" className="field w-auto h-8 text-xs py-0">
-                    <option value="none">none</option>
-                    <option value="score">score only</option>
-                    <option value="full">score + rationale</option>
-                  </select>
-                </div>
-                <button className="btn btn-dark btn-sm">Add task</button>
-              </form>
+              <details className="border-t border-slate-100 pt-3">
+                <summary className="text-sm font-semibold cursor-pointer text-sky-700 select-none">
+                  Add a task
+                </summary>
+                <form action={addTask} className="space-y-2 mt-3">
+                  <input type="hidden" name="job_id" value={job.id} />
+                  <input name="title" required placeholder="Task title" className="field h-9" />
+                  <textarea
+                    name="brief_md"
+                    required
+                    rows={2}
+                    placeholder="Task brief (markdown) — describe the AI-agent-completable task"
+                    className="field-area"
+                  />
+                  <div className="flex items-center gap-2">
+                    <label className="text-xs text-slate-500 shrink-0">Candidate feedback</label>
+                    <select name="feedback_visibility" defaultValue="none" className="field w-auto h-8 text-xs py-0">
+                      <option value="none">none</option>
+                      <option value="score">score only</option>
+                      <option value="full">score + rationale</option>
+                    </select>
+                  </div>
+                  <button className="btn btn-dark btn-sm">Add task</button>
+                </form>
+              </details>
             </div>
           ))}
-          {jobs?.length === 0 && <p className="text-sm text-slate-500">No jobs yet — create one above.</p>}
+          {jobs.length === 0 && (
+            <div className="card p-6 text-center">
+              <p className="text-sm text-slate-600">No jobs yet.</p>
+              <p className="text-xs text-slate-400 mt-1">
+                Create one above, add a task describing real work, then write a rubric to score it.
+              </p>
+            </div>
+          )}
         </section>
 
         {/* Rubrics */}
         <section className="card p-6">
-          <h2 className="font-semibold text-slate-900 mb-3 flex items-center gap-2">
+          <h2 className="font-semibold text-slate-900 mb-1 flex items-center gap-2">
             <FontAwesomeIcon icon={faClipboardCheck} className="w-4 h-4 text-sky-700" /> Rubrics
           </h2>
+          <p className="text-xs text-slate-500 mb-3">
+            Your scoring logic. A submission can only be evaluated once a rubric exists.
+          </p>
           <ul className="space-y-1 mb-4">
             {(rubrics as Rubric[] | null)?.map((r) => (
               <li key={r.id} className="text-sm text-slate-700 font-medium">{r.name}</li>
             ))}
             {rubrics?.length === 0 && <li className="text-xs text-slate-400">No rubrics yet.</li>}
           </ul>
-          <form action={createRubric} className="space-y-2">
-            <input name="name" required placeholder="Rubric name" className="field h-9" />
-            <textarea name="prompt_md" required rows={3} placeholder="Scoring criteria / prompt (markdown). This is your evaluation logic — the platform runs it against each submission." className="field-area" />
-            <button className="btn btn-dark btn-sm">Create rubric</button>
-          </form>
+          <details>
+            <summary className="text-sm font-semibold cursor-pointer text-sky-700 select-none">
+              New rubric
+            </summary>
+            <form action={createRubric} className="space-y-2 mt-3">
+              <input name="name" required placeholder="Rubric name" className="field h-9" />
+              <textarea
+                name="prompt_md"
+                required
+                rows={3}
+                placeholder="Scoring criteria / prompt (markdown). This is your evaluation logic — the platform runs it against each submission."
+                className="field-area"
+              />
+              <button className="btn btn-dark btn-sm">Create rubric</button>
+            </form>
+          </details>
         </section>
       </div>
     </main>

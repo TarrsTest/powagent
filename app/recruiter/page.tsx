@@ -1,9 +1,9 @@
 import { redirect } from 'next/navigation';
 import Link from 'next/link';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
-import { faBriefcase, faListCheck, faClipboardCheck, faArrowRight } from '@fortawesome/free-solid-svg-icons';
+import { faBriefcase, faListCheck, faClipboardCheck, faArrowRight, faHandshake } from '@fortawesome/free-solid-svg-icons';
 import { getProfile } from '@/lib/profile';
-import { createServiceClient } from '@/lib/supabase/service';
+import { createClient } from '@/lib/supabase/server';
 import Brand from '@/components/Brand';
 import { createJob, setJobStatus, addTask, createRubric } from './actions';
 
@@ -17,18 +17,34 @@ const statusBadge = (s: string) =>
 export default async function RecruiterPage() {
   const session = await getProfile();
   if (!session) redirect('/login');
+  // UX guard only — the policies below are what actually scope the data.
   if (session.profile.role !== 'recruiter' || !session.profile.org_id) redirect('/settings');
   const orgId = session.profile.org_id;
 
-  const db = createServiceClient();
-  const [{ data: jobs }, { data: rubrics }] = await Promise.all([
-    db
+  // Session client. `rubrics: recruiter manage own org` and `acceptances:
+  // recruiter read own org` scope those two on their own.
+  //
+  // `jobs` needs the explicit org_id below and it is NOT a redundant auth
+  // check: `jobs/tasks: candidate read open` is permissive and untargeted, so
+  // it also matches a recruiter, and permissive policies OR together — without
+  // the filter this dashboard would list every open job on the platform. RLS
+  // still decides what may be read; this decides what we're asking for.
+  const supabase = await createClient();
+  const [{ data: jobs }, { data: rubrics }, { data: acceptances }] = await Promise.all([
+    supabase
       .from('jobs')
       .select('id, title, status, tasks(id, title, created_at)')
       .eq('org_id', orgId)
       .order('created_at', { ascending: false }),
-    db.from('rubrics').select('id, name, created_at').eq('org_id', orgId).order('created_at', { ascending: false }),
+    supabase.from('rubrics').select('id, name, created_at').order('created_at', { ascending: false }),
+    supabase.from('task_acceptances').select('task_id'),
   ]);
+
+  // A1 — how many candidates have picked up each task.
+  const acceptCount = new Map<string, number>();
+  for (const a of (acceptances as { task_id: string }[] | null) ?? []) {
+    acceptCount.set(a.task_id, (acceptCount.get(a.task_id) ?? 0) + 1);
+  }
 
   return (
     <main className="min-h-dvh">
@@ -76,12 +92,18 @@ export default async function RecruiterPage() {
 
               <ul className="space-y-1 mb-3">
                 {job.tasks?.map((t) => (
-                  <li key={t.id}>
+                  <li key={t.id} className="flex items-center gap-2">
                     <Link href={`/recruiter/tasks/${t.id}`} className="text-sm text-slate-700 hover:text-sky-700 inline-flex items-center gap-1.5">
                       <FontAwesomeIcon icon={faListCheck} className="w-3 h-3 text-slate-400" />
                       {t.title}
                       <FontAwesomeIcon icon={faArrowRight} className="w-3 h-3 text-slate-300" />
                     </Link>
+                    {(acceptCount.get(t.id) ?? 0) > 0 && (
+                      <span className="badge badge-muted" title="candidates working on this task">
+                        <FontAwesomeIcon icon={faHandshake} className="w-2.5 h-2.5" />
+                        {acceptCount.get(t.id)}
+                      </span>
+                    )}
                   </li>
                 ))}
                 {(!job.tasks || job.tasks.length === 0) && <li className="text-xs text-slate-400">No tasks yet.</li>}
@@ -91,6 +113,14 @@ export default async function RecruiterPage() {
                 <input type="hidden" name="job_id" value={job.id} />
                 <input name="title" required placeholder="Task title" className="field h-9" />
                 <textarea name="brief_md" required rows={2} placeholder="Task brief (markdown) — describe the AI-agent-completable task" className="field-area" />
+                <div className="flex items-center gap-2">
+                  <label className="text-xs text-slate-500 shrink-0">Candidate feedback</label>
+                  <select name="feedback_visibility" defaultValue="none" className="field w-auto h-8 text-xs py-0">
+                    <option value="none">none</option>
+                    <option value="score">score only</option>
+                    <option value="full">score + rationale</option>
+                  </select>
+                </div>
                 <button className="btn btn-dark btn-sm">Add task</button>
               </form>
             </div>

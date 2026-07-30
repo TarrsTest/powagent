@@ -9,8 +9,12 @@ export type Profile = {
 
 /**
  * Current Supabase user + their powagent profile row (role/org). Returns null
- * when signed out. The users row is auto-created on signup by a DB trigger, but
- * we upsert defensively in case a session predates the trigger.
+ * when signed out.
+ *
+ * The users row is created by the on_auth_user_created trigger at signup. If it
+ * is somehow absent we fall back to an in-memory candidate profile rather than
+ * writing one: `users` has no INSERT policy by design (role/org are settable
+ * only on the privileged path), so a self-insert here could never succeed.
  */
 export const getProfile = async (): Promise<{ userId: string; profile: Profile } | null> => {
   const supabase = await createClient();
@@ -19,15 +23,17 @@ export const getProfile = async (): Promise<{ userId: string; profile: Profile }
   } = await supabase.auth.getUser();
   if (!user) return null;
 
-  let { data: row } = await supabase
+  const { data: row } = await supabase
     .from('users')
     .select('id, email, role, org_id')
     .eq('id', user.id)
     .maybeSingle();
 
-  if (!row) {
-    await supabase.from('users').upsert({ id: user.id, email: user.email }).select();
-    row = { id: user.id, email: user.email ?? null, role: 'candidate', org_id: null };
-  }
-  return { userId: user.id, profile: row as Profile };
+  const profile: Profile = (row as Profile | null) ?? {
+    id: user.id,
+    email: user.email ?? null,
+    role: 'candidate',
+    org_id: null,
+  };
+  return { userId: user.id, profile };
 };

@@ -1,11 +1,11 @@
 import { redirect, notFound } from 'next/navigation';
 import Link from 'next/link';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
-import { faArrowLeft, faFlag, faPlay } from '@fortawesome/free-solid-svg-icons';
+import { faArrowLeft, faFlag, faPlay, faRankingStar, faHandshake } from '@fortawesome/free-solid-svg-icons';
 import { getProfile } from '@/lib/profile';
-import { createServiceClient } from '@/lib/supabase/service';
+import { createClient } from '@/lib/supabase/server';
 import Brand from '@/components/Brand';
-import { runEvaluate } from '../../actions';
+import { runEvaluate, setFeedbackVisibility } from '../../actions';
 
 type EvalRow = {
   id: string;
@@ -21,6 +21,7 @@ type Submission = {
   result_md: string;
   status: string;
   submitted_at: string;
+  candidate: { email: string | null } | null;
   conversation_artifacts: Artifact[];
   evaluations: EvalRow[];
 };
@@ -29,32 +30,45 @@ export default async function TaskSubmissionsPage(props: { params: Promise<{ id:
   const { id: taskId } = await props.params;
   const session = await getProfile();
   if (!session) redirect('/login');
+  // UX guard only — the policies below are what actually scope the data.
   if (session.profile.role !== 'recruiter' || !session.profile.org_id) redirect('/settings');
   const orgId = session.profile.org_id;
 
-  const db = createServiceClient();
-  const { data: task } = await db
+  // Session client. Submissions / artifacts / evaluations / rubrics are scoped
+  // to this org by their own policies, so those queries carry no org filter.
+  //
+  // The task lookup does, because `tasks: candidate read open` is permissive
+  // and untargeted — it matches recruiters too, so without the filter this page
+  // would happily render another org's open task (empty, but it shouldn't
+  // resolve at all).
+  const supabase = await createClient();
+  const { data: task } = await supabase
     .from('tasks')
-    .select('id, title, brief_md, jobs!inner(org_id, title)')
+    .select('id, title, brief_md, feedback_visibility, jobs!inner(org_id, title)')
     .eq('id', taskId)
     .eq('jobs.org_id', orgId)
     .maybeSingle();
   if (!task) notFound();
 
-  const [{ data: submissions }, { data: rubrics }] = await Promise.all([
-    db
+  const [{ data: submissions }, { data: rubrics }, { data: acceptances }] = await Promise.all([
+    supabase
       .from('submissions')
+      // A3 — the candidate's email, readable because they submitted to this
+      // org's task ("users: recruiter read own org candidates").
       .select(
         'id, candidate_id, result_md, status, submitted_at, ' +
+          'candidate:users!submissions_candidate_id_fkey(email), ' +
           'conversation_artifacts(raw_md, fetch_status, source_type), ' +
           'evaluations(id, status, error, ran_at, output_json)',
       )
       .eq('task_id', taskId)
       .order('submitted_at', { ascending: false }),
-    db.from('rubrics').select('id, name').eq('org_id', orgId).order('created_at', { ascending: false }),
+    supabase.from('rubrics').select('id, name').order('created_at', { ascending: false }),
+    supabase.from('task_acceptances').select('id').eq('task_id', taskId),
   ]);
 
   const rubricList = (rubrics as { id: string; name: string }[] | null) ?? [];
+  const acceptedCount = acceptances?.length ?? 0;
 
   return (
     <main className="min-h-dvh">
@@ -69,6 +83,29 @@ export default async function TaskSubmissionsPage(props: { params: Promise<{ id:
           </Link>
           <h1 className="text-2xl font-bold tracking-tight text-slate-900 mt-2">{task.title}</h1>
           <p className="text-sm text-slate-600 whitespace-pre-wrap mt-1">{task.brief_md}</p>
+          <div className="flex items-center flex-wrap gap-3 mt-3">
+            <Link href={`/recruiter/tasks/${taskId}/leaderboard`} className="btn btn-dark btn-sm">
+              <FontAwesomeIcon icon={faRankingStar} className="w-3 h-3" /> Leaderboard
+            </Link>
+            <span className="badge badge-muted">
+              <FontAwesomeIcon icon={faHandshake} className="w-2.5 h-2.5" /> {acceptedCount} accepted
+            </span>
+            {/* A2 — how much of the evaluation candidates may see */}
+            <form action={setFeedbackVisibility} className="flex items-center gap-1.5">
+              <input type="hidden" name="task_id" value={taskId} />
+              <label className="text-xs text-slate-500">Candidate feedback</label>
+              <select
+                name="feedback_visibility"
+                defaultValue={task.feedback_visibility}
+                className="field w-auto h-8 text-xs py-0"
+              >
+                <option value="none">none</option>
+                <option value="score">score only</option>
+                <option value="full">score + rationale</option>
+              </select>
+              <button className="btn btn-ghost btn-sm h-8">Save</button>
+            </form>
+          </div>
         </div>
 
         {rubricList.length === 0 && (
@@ -80,12 +117,23 @@ export default async function TaskSubmissionsPage(props: { params: Promise<{ id:
         <ul className="space-y-4">
           {(submissions as Submission[] | null)?.map((s) => {
             const artifact = s.conversation_artifacts?.[0];
-            const evals = (s.evaluations ?? []).slice().sort((a, b) => (b.output_json?.score ?? -1) - (a.output_json?.score ?? -1));
+            // Newest run first. Evaluations are append-only, so re-running a
+            // rubric adds a row — ordering by score would surface the flattering
+            // old run instead of the current verdict.
+            const evals = (s.evaluations ?? [])
+              .slice()
+              .sort((a, b) => (b.ran_at ?? '').localeCompare(a.ran_at ?? ''));
             return (
               <li key={s.id} className="card p-6">
-                <div className="flex items-center justify-between mb-3">
-                  <span className="text-xs font-mono text-slate-400">candidate {s.candidate_id.slice(0, 8)}…</span>
-                  <span className="badge badge-muted">{s.status}</span>
+                <div className="flex items-center justify-between gap-3 mb-3">
+                  {s.candidate?.email ? (
+                    <a href={`mailto:${s.candidate.email}`} className="text-sm font-medium text-sky-700 hover:underline truncate">
+                      {s.candidate.email}
+                    </a>
+                  ) : (
+                    <span className="text-xs font-mono text-slate-400">candidate {s.candidate_id.slice(0, 8)}…</span>
+                  )}
+                  <span className="badge badge-muted shrink-0">{s.status}</span>
                 </div>
 
                 <details className="mb-2 group">

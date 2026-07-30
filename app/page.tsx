@@ -14,7 +14,7 @@ const steps = [
 ];
 
 const reasons = [
-  { icon: faScaleBalanced, title: 'Rubric-based scoring', body: 'Every submission is judged against the same weighted dimensions — no gut-feel, no bias.' },
+  { icon: faScaleBalanced, title: 'Your rubric, applied evenly', body: 'The same rubric runs against every submission — your criteria, not the platform’s opinion of merit.' },
   { icon: faEye, title: 'See the whole process', body: 'The agent transcript is part of the evidence. Reward good reasoning, catch shortcuts.' },
   { icon: faGaugeHigh, title: 'Faster shortlists', body: 'Ranked candidates the moment work lands — spend review time on the top of the list.' },
   { icon: faShieldHalved, title: 'Consistent & auditable', body: 'Same task, same rubric, same runtime for everyone. Decisions you can defend.' },

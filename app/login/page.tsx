@@ -4,6 +4,7 @@ import { useState } from 'react';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { faEnvelope, faCheck } from '@fortawesome/free-solid-svg-icons';
 import { createClient } from '@/lib/supabase/client';
+import Brand from '@/components/Brand';
 
 export default function LoginPage() {
   const [email, setEmail] = useState('');
@@ -32,7 +33,9 @@ export default function LoginPage() {
   };
 
   return (
-    <main className="min-h-dvh flex items-center justify-center px-6">
+    <main className="min-h-dvh flex flex-col items-center justify-center px-6 gap-6">
+      {/* Without this there is no way out of /login except the back button. */}
+      <Brand />
       <div className="w-full max-w-sm card p-8">
         <div className="inline-flex items-center justify-center w-11 h-11 rounded-xl bg-sky-50 text-sky-700 mb-5">
           <FontAwesomeIcon icon={sent ? faCheck : faEnvelope} className="w-4 h-4" />

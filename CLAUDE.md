@@ -101,6 +101,40 @@ Anywhere you need to bypass RLS for a server-owned operation (cron sweepers, sys
 - ❌ Don't accept `next` query params on `/auth/callback` without the `isSafeNext` check — open-redirect is real.
 - ❌ Don't hand-write a `pnpm-workspace.yaml` / `allowBuilds:` block to silence pnpm's "Ignored build scripts" warning. Native-build approval is already declared in `package.json` → `pnpm.onlyBuiltDependencies` (`sharp`, `unrs-resolver`). If you add another dep with a build script, append its name to that array — don't improvise a workspace file.
 
+## powagent: the two authorization paths
+
+This product adds a second, deliberate exception to the "Server Actions only"
+rule above: a two-sided REST API under `app/api/v1/*` so agents can drive both
+sides programmatically. It is a product feature, not drift. The two paths are
+authorized differently and must not be mixed up:
+
+| Path | Client | Authorization |
+|---|---|---|
+| UI — pages, Server Actions | `lib/supabase/server.ts` (session) | **RLS policies** |
+| REST API — `app/api/v1/*` | `lib/supabase/service.ts` (service role) | API-key scope in `lib/guard.ts` |
+
+**Do not use the service-role client on a browser path.** Until 2026-07-28 every
+page and Server Action did, which meant the RLS policies were never actually in
+force. The only permitted service-role callers on a browser path are the
+privileged operations enumerated in `lib/supabase/service.ts` — role promotion
+and API-key writes, things RLS deliberately forbids a user to do to themselves —
+each with an explicit auth check directly above the call. If a query "needs"
+service role to work, the missing piece is a policy.
+
+**A scoping filter is not an ownership re-check.** `jobs/tasks: candidate read
+open` are permissive and untargeted, so they match recruiters too, and permissive
+policies OR together. A recruiter query therefore still needs `.eq('org_id', …)`
+— not to enforce anything, but to say which rows it wants. Omitting it lists
+every open job on the platform.
+
+**Every UPDATE policy needs an explicit `WITH CHECK`.** Without one Postgres
+reuses `USING`, which pins the row but not its columns. That is exactly how
+`users: update self` allowed any user to make themselves a recruiter in any
+organization (see `docs/PRD.md` §6).
+
+Product requirements, open questions and architecture decisions live in
+`docs/PRD.md`. The `spec §N` citations in the code refer to its sections.
+
 ## What to do when in doubt
 
 Read `app/posts/page.tsx` + `app/auth/callback/route.ts` — they're the canonical example.

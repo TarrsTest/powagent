@@ -21,8 +21,11 @@ type SubmissionRow = {
  *                    several places at once and queued/errored rows (no score)
  *                    were ranked as if they'd scored below zero. Ranking rules
  *                    now live in lib/leaderboard.ts, shared with the UI.
- *  · `evaluations` — every row, newest run first, including queued/running/
- *                    error, for status polling and debugging.
+ *  · `evaluations` — every row, newest run first, including failed ones, for
+ *                    history and debugging. Evaluation is synchronous today, so
+ *                    a row here is already `done` or `error` by the time the
+ *                    triggering request returns; there is nothing to poll for
+ *                    until PRD §11 O1 makes it asynchronous.
  */
 export async function GET(req: Request) {
   const key = await requireScope(req, 'org', 'evaluations:read');

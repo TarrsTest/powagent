@@ -6,8 +6,23 @@ import { runEvaluation } from '@/lib/eval';
  * (app/api/v1/submissions/[id]/evaluate) and the recruiter UI action.
  * Scoped to orgId: the submission and rubric must both belong to that org.
  *
- * Evaluations are append-only: this always inserts a NEW evaluation row
- * (queued→running→done|error); a done row is never mutated.
+ * Evaluations are append-only: this always inserts a NEW evaluation row; a done
+ * row is never mutated (enforced by a trigger, not by convention).
+ *
+ * STATE MODEL — what actually happens today:
+ *
+ *   evaluations:  running -> done          (success)
+ *                 running -> error         (failure)
+ *   submissions:  submitted -> evaluating -> evaluated   (success)
+ *                 submitted -> evaluating -> submitted   (failure, reverted)
+ *
+ * `queued` is a legal evaluations.status and is the column DEFAULT, but this
+ * function never produces it: the Anthropic call runs inside the request, so a
+ * row is already running by the time it exists. The value is deliberately kept
+ * for the asynchronous path in PRD §11 O1 — a queue would insert without a
+ * status (taking the default) and a worker would move it to running. Until that
+ * exists, a `queued` row in the database means something crashed between insert
+ * and update, not that work is waiting.
  */
 export const evaluateSubmission = async (params: {
   orgId: string;

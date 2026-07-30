@@ -182,6 +182,26 @@ reminder; no retry on transport/API errors. Scores are clamped to 0–100. On
 unrecoverable failure the evaluation row goes to `status='error'` and the
 submission reverts to `submitted`.
 
+**State model — as implemented.** Evaluation is synchronous, so the states the
+code actually produces are:
+
+| Table | Transitions |
+|---|---|
+| `evaluations` | `running` → `done` · `running` → `error` |
+| `submissions` | `submitted` → `evaluating` → `evaluated` · `submitted` → `evaluating` → `submitted` (reverted on failure) |
+
+`queued` is a legal `evaluations.status` and is the column's DEFAULT, but
+**nothing ever writes it**: `lib/evaluateSubmission.ts` inserts with
+`status='running'` because the model call happens inside the same request. The
+value is kept on purpose for the asynchronous path in §11 O1 — a queue would
+insert without a status and a worker would advance it. Until then, a `queued`
+row means a crash between insert and update, not work waiting. Consumers must
+treat only `done` as scored: `lib/leaderboard.ts` excludes everything else
+(§9.8), rather than reading a missing score as zero.
+
+Callers do not poll. `POST /v1/submissions/:id/evaluate` returns the finished
+evaluation, and the recruiter UI re-renders after the Server Action resolves.
+
 **Known limitation (§11 O2):** `dimensions[]` is whatever the model emits, so
 two candidates can be scored on differently-named dimensions. Cross-candidate
 comparison is therefore weaker than the marketing claim of "the same weighted
@@ -334,8 +354,10 @@ refinement and is deliberately not implemented.
 **O1 — Evaluation is synchronous.** *Unresolved.* The Anthropic call runs inside
 the request. Vercel's function timeout (10s Hobby / 60s Pro) makes this fragile,
 there is no batch evaluation and no retry after failure. The fix is a queue —
-insert `queued`, drain from a Cron or Edge Function, poll or subscribe from the
-UI — and it is not scheduled.
+insert `queued` (already the column default, already a legal state, already
+excluded from ranking), drain from a Cron or Edge Function, poll or subscribe
+from the UI. Not scheduled, and deliberately not half-built: the state value is
+reserved, nothing else is.
 
 **O2 — Rubrics are unstructured.** See §8.
 

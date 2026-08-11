@@ -1,0 +1,13 @@
+-- 005_drop_template_posts.sql
+-- Template cleanup: remove the `posts` example resource.
+--
+-- powagent was scaffolded from the nextjs-supabase starter, which shipped a
+-- demo `posts` table (migration 001) to make the template's /posts page work.
+-- No product code has ever referenced it — app/posts/ does not exist — so it is
+-- dead schema that showed up in every table listing and RLS audit.
+--
+-- 001_posts.sql is deleted in the same commit, which stops the table being
+-- recreated. This migration removes it from environments where it already
+-- exists (dev never had it; staging/live may). Idempotent, like every migration
+-- here: they are replayed in full on each deploy, there is no ledger.
+drop table if exists public.posts cascade;

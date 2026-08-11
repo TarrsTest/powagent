@@ -167,10 +167,10 @@ All migrations are idempotent, so re-running them is a no-op.
 
 | File | Contents |
 |---|---|
-| `001_posts.sql` | Template leftover. Unused by the product; the `posts` table does not exist in dev. |
 | `002_powagent.sql` | Core schema: orgs, users, jobs, tasks, submissions, conversation_artifacts, rubrics, evaluations, api_keys + append-only triggers + RLS. |
 | `003_pipeline_smoke.sql` | Deploy-pipeline smoke marker, read back by the `dbcheck` edge function. Not product data. |
 | `004_rls_authoritative_and_p1.sql` | Privilege-escalation fix, task acceptances, per-task feedback visibility + `my_feedback()`, org invites, candidate identity for recruiters, grants for `anon`/`authenticated`. |
+| `005_drop_template_posts.sql` | Drops the `posts` demo table inherited from the nextjs-supabase starter. `001_posts.sql`, which created it, was deleted at the same time. |
 
 There is no `supabase_migrations` tracking table in dev — migrations there were
 applied by hand. To check whether one is live, query the catalog

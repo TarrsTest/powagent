@@ -8,7 +8,8 @@
     "start": "next start -p 3000",
     "lint": "next lint",
     "typecheck": "tsc --noEmit",
-    "test": "node --test \"test/*.test.ts\""
+    "test": "node --test \"test/*.test.ts\"",
+    "db:verify": "psql \"$DATABASE_URL\" -f supabase/verify_schema.sql"
   },
   "dependencies": {
     "@fortawesome/fontawesome-svg-core": "^7.2.0",

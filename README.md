@@ -177,6 +177,28 @@ applied by hand. To check whether one is live, query the catalog
 (`pg_policies`, `information_schema.columns`) rather than trusting that the file
 exists.
 
+That catalog check is written down as a script, so it is the same in every
+environment:
+
+```bash
+pnpm run db:verify        # psql "$DATABASE_URL" -f supabase/verify_schema.sql
+```
+
+It is read-only and safe against production. It reports each table, function,
+trigger, RLS flag, policy, index and grant owned by 002–005 as `PRESENT` /
+`MISSING` / `FAILED` / `SKIPPED`, then a one-line verdict. Two rows are
+assertions rather than inventory, because a schema can contain the object and
+still be wrong:
+
+- **`"users: update self"` has an explicit `WITH CHECK`** — a database with 002
+  but not 004 has the policy (`PRESENT`) while still carrying the §6
+  privilege-escalation hole, and reports `FAILED`.
+- **`posts` dropped** — `FAILED` while the template's table still exists.
+
+`SKIPPED` means the check needs something only Supabase provides (`auth.users`,
+the `anon` / `authenticated` roles), so the script also runs against a plain
+Postgres.
+
 Row-level policies are best verified by impersonating a real user:
 
 ```sql
@@ -196,6 +218,7 @@ rollback;
 | `pnpm test` | Node's test runner over `test/*.test.ts` |
 | `pnpm run lint` | ESLint via `next lint`, zero-warning baseline |
 | `pnpm run build` | Production build |
+| `pnpm run db:verify` | Read-only: reports which of migrations 002–005 are live in `$DATABASE_URL` |
 
 All four run in CI (`.github/workflows/ci.yml`) on pushes to `dev` / `staging` /
 `main` / `feature|fix|chore/**` and on every PR. CI needs no secrets.
@@ -235,6 +258,7 @@ lib/
   profile.ts  http.ts  ratelimit.ts
 supabase/
   migrations/                     schema source of truth
+  verify_schema.sql               read-only: which migrations are live here?
   functions/                      Deno edge functions (ping/health/echo/dbcheck)
 test/                             node --test suites
 docs/PRD.md                       product requirements

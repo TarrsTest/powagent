@@ -1,14 +1,17 @@
 # Architecture (locked)
 
 When you add or change code in this repo, **follow these rules**. They
-are not preferences — they are how this template is supposed to work.
-Deviating is a bug.
+are not preferences — they are how powagent is built. Deviating is a bug.
+
+Product requirements, open questions and architecture decisions live in
+[`docs/PRD.md`](docs/PRD.md); the `spec §N` citations in the code point at its
+sections.
 
 ## Stack — pinned
 
 | Concern | Choice | Don't substitute |
 |---|---|---|
-| Data access | **`@supabase/ssr` + `@supabase/supabase-js`** (PostgREST) | No Drizzle / Prisma / Sequelize / direct `pg` connection. The data layer is `supabase-js` because this template's value-add is the Supabase platform (RLS, realtime, storage, auth). ORM-on-top defeats that — if you need an ORM-driven stack, pair `nextjs-standalone` with `express-postgres` over HTTP. |
+| Data access | **`@supabase/ssr` + `@supabase/supabase-js`** (PostgREST) | No Drizzle / Prisma / Sequelize / direct `pg` connection. The data layer is `supabase-js` because this product's authorization model *is* the Supabase platform — RLS is the auth check (PRD §11 D1), and an ORM on top would route around the policies that enforce it. |
 | Authorization | **RLS policies in `supabase/migrations/`** | Do NOT add `if (post.author_id === user.id)` checks in Server Action / RSC code. The policy is the source of truth; an in-code duplicate drifts the day the policy changes. (UI nicety like hiding a delete button for non-authors is fine — actual enforcement is the policy.) |
 | Auth | Supabase Auth (magic-link out of the box) via `@supabase/ssr` | Don't add NextAuth / Clerk / Auth.js / a custom bcrypt+JWT stack — if you need that pattern, pair `nextjs-standalone` with `express-postgres`. |
 | Migrations | `supabase/migrations/*.sql` via Supabase CLI | No Alembic / Sequelize / dbmate. |
@@ -27,29 +30,48 @@ app/
   auth/callback/route.ts         exchanges code -> session, validates `next`
                                  against open-redirect (anything that isn't a
                                  single-leading-slash relative path is rejected)
-  dashboard/page.tsx             SSR auth gate via supabase.auth.getUser()
-  posts/page.tsx                 RSC list + Server Actions for create / delete
+  dashboard/page.tsx             SSR auth gate, routes by role
+  tasks/                         candidate: browse open tasks, accept, submit
+    page.tsx  actions.ts
+  recruiter/                     recruiter: jobs, tasks, rubrics, evaluation
+    page.tsx  actions.ts
+    tasks/[id]/page.tsx          submissions + transcripts for one task
+    tasks/[id]/leaderboard/page.tsx   ranked candidates
+  settings/                      org onboarding, team invites, API keys
+    page.tsx  actions.ts  IssueKeyForm.tsx
+  api/v1/                        two-sided REST API — API-key auth, NOT sessions
 components/
-  SignOutButton.tsx              client component (router.refresh after sign-out)
+  Brand.tsx  SignOutButton.tsx
 lib/
+  eval.ts                        evaluation runtime + injection defence (PRD §8, §9.1)
+  evaluateSubmission.ts          shared orchestration — UI and API both call this
+  ingest.ts                      transcript ingest + SSRF guards (§7, §9.2)
+  leaderboard.ts                 ranking rules, shared by UI and API (§9.8)
+  submissionRules.ts             deadline + submission-cap predicates (§9.9)
+  apikey.ts  guard.ts            API-key issue / authenticate / scope check (§6)
+  http.ts  ratelimit.ts  profile.ts
   supabase/
     server.ts                    createClient() for RSC / Server Actions / route handlers
     client.ts                    createBrowserClient() for client components
+    service.ts                   service-role client — BYPASSES RLS, see below
     middleware.ts                updateSession() — runs on every request to refresh
                                  the session cookie. Don't override the auth-cookie
                                  defaults from @supabase/ssr.
 middleware.ts                    runs lib/supabase/middleware.updateSession on every request
 supabase/
-  migrations/                    Raw SQL — table DDL + RLS policies. Apply via
-                                 `supabase db push`. Schema source of truth.
+  migrations/                    Raw SQL — table DDL + RLS policies. Schema source
+                                 of truth. Replayed IN FULL on every deploy (there
+                                 is no ledger), so every one must be idempotent.
+test/                            node:test, no runner dep — `pnpm test`
+docs/PRD.md                      product requirements; the `spec §N` citations
+                                 in the code point at its sections
 ```
 
-There is no `service/` layer in this template. Server Actions are
-small enough that the "controller → service" split would be a
-ceremony tax. If you ever grow a complex business operation that
-spans multiple tables, add a `lib/services/` folder and move the
-logic there — but for the canonical "RSC read + Server Action
-create / delete" pattern, inline is fine.
+Logic that more than one entry point needs lives in `lib/` as a plain module —
+`evaluateSubmission.ts`, `leaderboard.ts` and `submissionRules.ts` exist because
+the UI and the REST API must behave identically, and they previously drifted.
+Anything used from exactly one page still belongs inline in that page's
+`actions.ts`; don't add a layer for a single caller.
 
 ## The 4-step recipe — adding a new resource
 
@@ -64,30 +86,38 @@ The Server Action calls `supabase.auth.getUser()` first, returns early if absent
 
 ```sql
 -- Authoritative — in supabase/migrations/
-create policy "posts: read for authed users"
-  on posts for select using (auth.uid() is not null);
+create policy "submissions: candidate insert own" on submissions for insert
+  with check (candidate_id = auth.uid());
 
-create policy "posts: delete own"
-  on posts for delete using (auth.uid() = author_id);
+create policy "submissions: recruiter read own org" on submissions for select
+  using (exists (
+    select 1 from tasks t join jobs j on j.id = t.job_id
+    where t.id = submissions.task_id
+      and app_user_role() = 'recruiter' and j.org_id = app_user_org()));
 ```
 
 ```ts
-// app/posts/page.tsx — DON'T re-check ownership.
-const deletePost = async (formData: FormData) => {
-  'use server';
-  const id = String(formData.get('id') ?? '');
-  if (!id) return;
-  const supabase = await createClient();
-  // RLS handles "only the author can delete". 0 rows when not yours
-  // is the policy's "no, you can't" — same shape as not-found.
-  await supabase.from('posts').delete().eq('id', id);
-  revalidatePath('/posts');
-};
+// app/tasks/actions.ts — DON'T re-check ownership.
+const supabase = await createClient();
+// The insert policy pins candidate_id to auth.uid(); a forged candidate_id is
+// rejected by Postgres, not by an if-statement here. 0 rows when it isn't
+// yours is the policy saying "no" — same shape as not-found.
+await supabase.from('submissions').insert({ task_id: taskId, candidate_id: user.id, result_md });
 ```
+
+Every UPDATE policy must state an explicit `WITH CHECK`. Without one Postgres
+reuses `USING`, which pins the row but not its columns — exactly how
+`users: update self` once let any user make themselves a recruiter in any
+organization (PRD §6).
 
 ## When to reach for the service-role client
 
-Anywhere you need to bypass RLS for a server-owned operation (cron sweepers, system-only inserts, admin endpoints). Use the `SUPABASE_SERVICE_ROLE_KEY` to build a separate client. Write the in-code auth check **directly above** the admin call.
+Only for operations RLS deliberately forbids a user to perform on themselves —
+role promotion and API-key writes — plus system-owned writes, and the API-key
+request path which has no session for a policy to act on. The complete list is
+enumerated in `lib/supabase/service.ts`; write the in-code auth check **directly
+above** the privileged call. If a browser-path query "needs" service role to
+work, the missing piece is a policy.
 
 ## What NOT to do
 
@@ -137,4 +167,12 @@ Product requirements, open questions and architecture decisions live in
 
 ## What to do when in doubt
 
-Read `app/posts/page.tsx` + `app/auth/callback/route.ts` — they're the canonical example.
+Read `app/tasks/actions.ts` (session client + RLS-as-authorization, the canonical
+write path) and `app/api/v1/submissions/route.ts` (the API-key path, with scope
+as the tenant boundary). `lib/evaluateSubmission.ts` shows how a single piece of
+logic serves both.
+
+Before changing behaviour, check `docs/PRD.md` — §9.9 and §11 list what is
+knowingly unfinished, so you can tell a real gap from a deliberate one.
+
+Run `pnpm typecheck && pnpm test && pnpm lint` before you call something done.

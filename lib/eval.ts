@@ -33,8 +33,14 @@ export type EvalInput = {
 
 const SENTINEL_RE = /<\/?(candidate_result|candidate_transcript|task_brief|rubric)>/gi;
 
-// Strip any sentinel-looking tags a candidate may have embedded to break out.
-const neutralize = (s: string) => s.replace(SENTINEL_RE, '[removed]');
+/**
+ * Strip any sentinel-looking tags a candidate may have embedded to break out.
+ *
+ * Exported (like the predicates in lib/submissionRules.ts) so the §9.1
+ * injection defence can be tested directly rather than inferred from a mocked
+ * end-to-end run — this function IS the boundary, so it deserves its own tests.
+ */
+export const neutralize = (s: string) => s.replace(SENTINEL_RE, '[removed]');
 
 const SYSTEM = `You are powagent's evaluation runtime. You score a candidate's work sample against an employer-supplied rubric.
 
@@ -51,7 +57,7 @@ Output JSON shape (exactly these keys):
   "flags": [ <string>, ... ]   // e.g. "prompt-injection-attempt", "empty-transcript", "off-task"
 }`;
 
-const buildUserPrompt = (i: EvalInput): string =>
+export const buildUserPrompt = (i: EvalInput): string =>
   [
     '<task_brief>',
     neutralize(i.taskBrief),
@@ -72,7 +78,7 @@ const buildUserPrompt = (i: EvalInput): string =>
     'Evaluate the candidate strictly per the rubric. Respond with the JSON object only.',
   ].join('\n');
 
-const extractJson = (text: string): unknown => {
+export const extractJson = (text: string): unknown => {
   const trimmed = text.trim().replace(/^```(?:json)?/i, '').replace(/```$/, '').trim();
   const start = trimmed.indexOf('{');
   const end = trimmed.lastIndexOf('}');
@@ -80,9 +86,15 @@ const extractJson = (text: string): unknown => {
   return JSON.parse(trimmed.slice(start, end + 1));
 };
 
-const validate = (o: unknown): EvalOutput => {
+export const validate = (o: unknown): EvalOutput => {
   const x = o as Record<string, unknown>;
-  if (typeof x?.score !== 'number') throw new Error('score missing/invalid');
+  // typeof alone is not enough: NaN and Infinity are both 'number', and NaN
+  // survives the clamp below untouched (Math.max/min propagate it), so a NaN
+  // score would reach the DB, serialise to null in JSONB, and silently drop the
+  // candidate off the leaderboard instead of failing loudly here.
+  if (typeof x?.score !== 'number' || !Number.isFinite(x.score)) {
+    throw new Error('score missing/invalid');
+  }
   if (!Array.isArray(x.dimensions)) throw new Error('dimensions missing');
   if (typeof x.rationale !== 'string') throw new Error('rationale missing');
   const flags = Array.isArray(x.flags) ? x.flags.map(String) : [];

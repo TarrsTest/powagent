@@ -300,14 +300,33 @@ Both rules live in `lib/leaderboard.ts` and are shared by the UI and the API.
 > ordering that surfaced a candidate's *highest historical* score rather than
 > their current one. Sharing one module is the point, not an incidental tidy-up.
 
-### §9.9 Enforcement gaps [OPEN]
+### §9.9 Submission limits
 
-Known and deliberately unclosed as of this revision:
+A task may carry two limits, both enforced on **every** path that writes a
+submission — the `/tasks` Server Action and `POST /v1/submissions`:
 
-- `deadline_at` is displayed but **never enforced** — a past-deadline task still
-  accepts submissions on both paths.
-- `max_submissions_per_candidate` is enforced on the **API path only**; the UI
-  Server Action does not check it, so the cap is bypassable from a browser.
+| Limit | Denial | API status |
+|---|---|---|
+| `deadline_at` passed | `deadline_passed` | 409 |
+| `max_submissions_per_candidate` reached | `submission_limit_reached` | 409 |
+
+The rules live in `lib/submissionRules.ts` as pure predicates — no client, no
+I/O, no clock of their own; callers pass in the task's limits and the
+candidate's current count. That is what makes them testable without a database
+and, more importantly, what stops the two paths drifting.
+
+> **What this replaced.** `deadline_at` was displayed but enforced nowhere, and
+> the per-candidate cap was checked only by the API — so the cap was bypassable
+> from a browser and expired tasks accepted work on both paths. Re-deriving the
+> same rule at each call site is what allowed the disagreement; there is now one
+> implementation.
+
+The deadline is inclusive of its exact instant and an unparseable value is
+treated as *absent* rather than as closed — a malformed timestamp must not lock
+candidates out of a task.
+
+#### Remaining gaps [OPEN]
+
 - `agent_allowed` is stored and never read; its semantics are undefined.
 - API-key scopes cannot be chosen at issue time — every key gets its owner
   type's full set, which makes the scope system decorative in practice.
@@ -329,8 +348,7 @@ path, and the triggers would block one. Needs a designed answer (tombstoning
 with hash preservation is the likely shape) before this handles real applicants
 at scale.
 
-Legacy: `posts` (template leftover, unused — safe to drop) and `pipeline_smoke`
-(deploy verification, not product data).
+Non-product: `pipeline_smoke` (deploy verification, not product data).
 
 ## §11 Architecture decisions [NEW]
 
@@ -368,8 +386,20 @@ completion; both sides must poll the UI.
 credits. There is no metering, no per-org quota and no billing. Unbounded from a
 single org key.
 
-**O5 — No tests.** No test suite and no `test` script. Verification to date is
-manual plus SQL-level policy checks run against dev.
+**O5 — Test coverage is partial.** `pnpm test` runs `node:test` against the pure
+domain modules — no runner dependency, no config. Covered today:
+
+| Module | What is tested |
+|---|---|
+| `lib/leaderboard.ts` | latest-done-per-submission, best-per-candidate, exclusion of unscored rows |
+| `lib/submissionRules.ts` | deadline and cap predicates, boundary instants, malformed input |
+| `lib/eval.ts` | sentinel neutralization and the assembled prompt (§9.1), JSON extraction, score validation and clamping, retry policy via a stubbed `fetch` |
+
+**Not covered:** RLS policies, Server Actions, and the route handlers. Policy
+behaviour is verified by hand against dev with `psql` — `set local role
+authenticated` plus `set local request.jwt.claims` reproduces a browser
+identity exactly — but nothing runs those checks automatically, so a policy
+regression would ship silently. That is the largest remaining hole.
 
 ## §12 Content hashes and future attestation
 
@@ -411,8 +441,22 @@ Candidate keys:
 
 `GET /evaluations` returns `{ ranking, evaluations }` — `ranking` is the
 per-candidate leaderboard (§9.8); `evaluations` is every row, newest first, for
-status polling.
+history and debugging.
 
-**Migrations:** `001_posts` (legacy) · `002_powagent` (schema + RLS) ·
-`003_pipeline_smoke` (deploy check) · `004_rls_authoritative_and_p1` (§6
-security fix, §9.5–§9.8).
+**Migrations** — replayed in full on every deploy (there is no ledger), so each
+one is idempotent:
+
+| File | Purpose |
+|---|---|
+| `002_powagent` | product schema + RLS |
+| `003_pipeline_smoke` | deploy-pipeline check, not product data |
+| `004_rls_authoritative_and_p1` | §6 privilege-escalation fix, §9.5–§9.8 |
+| `005_drop_template_posts` | removes the `posts` demo table inherited from the starter |
+
+`001_posts.sql` was deleted alongside `005`: it created a `posts` table for the
+nextjs-supabase template's example page, which this product never had.
+
+**Shared domain modules** — `lib/evaluateSubmission.ts`, `lib/leaderboard.ts`
+and `lib/submissionRules.ts` each exist because the UI and the REST API must
+reach the same answer, and in each case they had already drifted. Adding a third
+entry point means calling these, not re-deriving them.

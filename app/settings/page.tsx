@@ -6,6 +6,7 @@ import {
 } from '@fortawesome/free-solid-svg-icons';
 import { getProfile } from '@/lib/profile';
 import { createClient } from '@/lib/supabase/server';
+import { SCOPES, describeScope } from '@/lib/apikey';
 import Brand from '@/components/Brand';
 import { createOrg, revokeKey, inviteMember, revokeInvite, acceptInvite } from './actions';
 import IssueKeyForm from './IssueKeyForm';
@@ -26,6 +27,15 @@ export default async function SettingsPage() {
   if (!session) redirect('/login');
   const { userId, profile } = session;
   const isRecruiter = profile.role === 'recruiter';
+
+  // Which permissions this user may put on a key. The server owns this list;
+  // IssueKeyForm only renders it, and issueKey re-validates whatever comes back
+  // against the owner type it derives from the profile itself.
+  const keyOwnerType = isRecruiter ? 'org' : 'candidate';
+  const scopeOptions = (SCOPES[keyOwnerType] as readonly string[]).map((value) => ({
+    value,
+    ...describeScope(keyOwnerType, value),
+  }));
 
   // Session client throughout. RLS scopes every list here: `org: read own`,
   // `api_keys: candidate own`/`org own`, and the two invite policies — one for
@@ -184,25 +194,37 @@ export default async function SettingsPage() {
           {isRecruiter && !profile.org_id ? (
             <p className="text-sm text-amber-700">Create an organization first.</p>
           ) : (
-            <IssueKeyForm />
+            <IssueKeyForm scopeOptions={scopeOptions} />
           )}
 
           <ul className="mt-5 space-y-2">
             {(keys as KeyRow[] | null)?.map((k) => (
-              <li key={k.id} className="flex items-center justify-between rounded-lg border border-slate-200 px-3 py-2">
-                <div className="min-w-0 flex items-center gap-2">
-                  <code className="text-xs font-mono text-slate-700">{k.key_prefix}…</code>
-                  <span className="badge badge-muted">{k.scopes.length} scopes</span>
-                  {k.revoked_at && <span className="badge badge-danger">revoked</span>}
+              <li key={k.id} className="rounded-lg border border-slate-200 px-3 py-2">
+                <div className="flex items-center justify-between gap-3">
+                  <div className="min-w-0 flex items-center gap-2">
+                    <code className="text-xs font-mono text-slate-700">{k.key_prefix}…</code>
+                    {k.revoked_at && <span className="badge badge-danger">revoked</span>}
+                  </div>
+                  {!k.revoked_at && (
+                    <form action={revokeKey}>
+                      <input type="hidden" name="id" value={k.id} />
+                      <button type="submit" className="text-slate-400 hover:text-red-600 cursor-pointer" title="Revoke">
+                        <FontAwesomeIcon icon={faTrash} className="w-3.5 h-3.5" />
+                      </button>
+                    </form>
+                  )}
                 </div>
-                {!k.revoked_at && (
-                  <form action={revokeKey}>
-                    <input type="hidden" name="id" value={k.id} />
-                    <button type="submit" className="text-slate-400 hover:text-red-600 cursor-pointer" title="Revoke">
-                      <FontAwesomeIcon icon={faTrash} className="w-3.5 h-3.5" />
-                    </button>
-                  </form>
-                )}
+                {/* Now that scopes are chosen rather than implied, which ones a
+                    key carries is the thing you need to see at a glance. */}
+                <div className="flex flex-wrap gap-1 mt-1.5">
+                  {k.scopes.length > 0 ? (
+                    k.scopes.map((s) => (
+                      <span key={s} className="badge badge-muted font-mono">{s}</span>
+                    ))
+                  ) : (
+                    <span className="text-xs text-slate-400">no scopes — this key can’t do anything</span>
+                  )}
+                </div>
               </li>
             ))}
             {keys?.length === 0 && <li className="text-sm text-slate-500">No keys yet.</li>}

@@ -145,7 +145,7 @@ safe on production, run as the service role. A script rather than a page because
 an admin surface would need an admin role, and §6 has only `recruiter` and
 `candidate`.
 
-Metrics 1, 2 and 4 are written. Metric 1 reports as a **funnel** rather than a
+All four metrics are written. Metric 1 reports as a **funnel** rather than a
 single rate, because the chain from signing up to a first score runs through two
 steps the employer does not control — a candidate has to accept, and then submit.
 Collapsed into one percentage, a demand problem and an onboarding problem are
@@ -161,13 +161,34 @@ the candidate submits, 7 days pass, or the task deadline closes. The unsettled
 count is printed beside each rate so a thin denominator is visible rather than
 implied.
 
+### §5.5 Metric 3, as defined. [Decided 2026-08-12]
+
+"Candidates who receive feedback submit a second task" needed four choices
+before it could be a query. Each is recorded because a future reader will
+otherwise re-derive a different one:
+
+| Question | Decision | Why |
+|---|---|---|
+| "receives feedback" | **Eligible to see it** — a `done` evaluation on a task whose `feedback_visibility` is `score` or `full` | Free, retroactive, and the predicate mirrors `my_feedback()`, the only path a candidate actually reads feedback through, so the metric cannot drift from what they see. *Actually viewed* would need a second event type and could only count forward. |
+| "a second task" | A task they had **not submitted to before** the feedback | A second attempt at the same task is `max_submissions_per_candidate` being used, not a return; a task already in flight was not caused by the feedback. |
+| Whose task | **Any employer** | This asks whether powagent holds candidates, not whether one company does. §5 is a company metric. |
+| Per candidate or per feedback | **One row per candidate**, anchored at their first feedback | The question is "do people come back", and the subject is a person. Counting per feedback would let one prolific candidate outweigh everyone else. |
+
+Window is **30 days**, not the 7 used for metrics 1 and 2: doing another task
+needs one to have been published and the candidate to have time for it.
+
+**The denominator is the real risk.** `feedback_visibility` defaults to `none`,
+so a candidate sees nothing unless the employer opts in per task. If no employer
+does, this metric measures an empty set and reads as a retention failure. The
+adoption numbers ship beside it for exactly that reason — read them first.
+
 **[OPEN]**
 
-- Metric 3 has no query yet — it is blocked on the definition below, not on work.
-- §5's "candidates who receive feedback" is undefined between *eligible* (a
-  `done` evaluation on a task whose `feedback_visibility` is not `none` —
-  derivable today) and *actually viewed* (a second event type). Eligible is the
-  cheaper and, at this volume, indistinguishable choice.
+- A candidate becomes eligible when the employer turns sharing on, which may be
+  later than the evaluation. There is no history of `feedback_visibility`
+  changes, so the evaluation's `ran_at` is used as the anchor and a late opt-in
+  overstates how long someone had their feedback. Fixing it means recording
+  visibility changes as events.
 - Ranking in `metrics.sql` is computed as of *now*, not as of the read.
   Evaluations are append-only, so a re-run can move a candidate into or out of
   the top 3 afterwards. Point-in-time attribution means storing the position on

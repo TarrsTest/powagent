@@ -65,15 +65,18 @@ describe('hasReachedSubmissionCap', () => {
 });
 
 describe('checkSubmissionAllowed', () => {
+  /** A candidate who has accepted the task — the ordinary case for the other rules. */
+  const accepted = (existingCount: number) => ({ existingCount, hasAccepted: true });
+
   test('allows a submission when there are no limits', () => {
-    assert.equal(checkSubmissionAllowed(NO_LIMITS, 0, NOW), null);
-    assert.equal(checkSubmissionAllowed(NO_LIMITS, 50, NOW), null);
+    assert.equal(checkSubmissionAllowed(NO_LIMITS, accepted(0), NOW), null);
+    assert.equal(checkSubmissionAllowed(NO_LIMITS, accepted(50), NOW), null);
   });
 
   test('blocks a past-deadline submission', () => {
     const denial = checkSubmissionAllowed(
       { deadline_at: '2026-07-29T00:00:00.000Z', max_submissions_per_candidate: null },
-      0,
+      accepted(0),
       NOW,
     );
     assert.ok(denial, 'expected a denial');
@@ -86,7 +89,7 @@ describe('checkSubmissionAllowed', () => {
     assert.equal(
       checkSubmissionAllowed(
         { deadline_at: '2026-08-30T00:00:00.000Z', max_submissions_per_candidate: 3 },
-        1,
+        accepted(1),
         NOW,
       ),
       null,
@@ -96,7 +99,7 @@ describe('checkSubmissionAllowed', () => {
   test('blocks a submission at the cap', () => {
     const denial = checkSubmissionAllowed(
       { deadline_at: null, max_submissions_per_candidate: 2 },
-      2,
+      accepted(2),
       NOW,
     );
     assert.ok(denial, 'expected a denial');
@@ -108,7 +111,7 @@ describe('checkSubmissionAllowed', () => {
   test('the cap message reads correctly for a single allowed submission', () => {
     const denial = checkSubmissionAllowed(
       { deadline_at: null, max_submissions_per_candidate: 1 },
-      1,
+      accepted(1),
       NOW,
     );
     assert.ok(denial);
@@ -119,7 +122,7 @@ describe('checkSubmissionAllowed', () => {
   test('deadline is reported first when both limits are hit', () => {
     const denial = checkSubmissionAllowed(
       { deadline_at: '2026-01-01T00:00:00.000Z', max_submissions_per_candidate: 1 },
-      5,
+      accepted(5),
       NOW,
     );
     assert.ok(denial);
@@ -131,10 +134,58 @@ describe('checkSubmissionAllowed', () => {
   // now call this function, so one set of inputs has one answer.
   test('the same inputs give the same answer regardless of caller', () => {
     const limits = { deadline_at: '2026-07-29T00:00:00.000Z', max_submissions_per_candidate: 3 };
-    const fromUi = checkSubmissionAllowed(limits, 0, NOW);
-    const fromApi = checkSubmissionAllowed(limits, 0, NOW);
+    const fromUi = checkSubmissionAllowed(limits, accepted(0), NOW);
+    const fromApi = checkSubmissionAllowed(limits, accepted(0), NOW);
     assert.deepEqual(fromUi, fromApi);
     assert.equal(fromUi?.code, 'deadline_passed');
+  });
+
+  // Acceptance as a prerequisite. Submitting without accepting used to be
+  // allowed on both paths, which left the employer blind to who was working on a
+  // task and put submissions outside the accepted -> submitted funnel entirely.
+  describe('acceptance is required', () => {
+    test('blocks a candidate who has not accepted the task', () => {
+      const denial = checkSubmissionAllowed(NO_LIMITS, { existingCount: 0, hasAccepted: false }, NOW);
+      assert.ok(denial, 'expected a denial');
+      assert.equal(denial.code, 'task_not_accepted');
+      assert.equal(denial.status, 409);
+      assert.match(denial.message, /accept/i);
+    });
+
+    test('allows the same candidate once they have accepted', () => {
+      assert.equal(
+        checkSubmissionAllowed(NO_LIMITS, { existingCount: 0, hasAccepted: true }, NOW),
+        null,
+      );
+    });
+
+    test('an unlimited task still requires acceptance', () => {
+      // No deadline and no cap must not read as "no rules at all".
+      const denial = checkSubmissionAllowed(NO_LIMITS, { existingCount: 3, hasAccepted: false }, NOW);
+      assert.equal(denial?.code, 'task_not_accepted');
+    });
+
+    test('a closed task reports the deadline, not the missing acceptance', () => {
+      // Accepting cannot reopen a closed task, so sending them to the Accept
+      // button would be a dead end.
+      const denial = checkSubmissionAllowed(
+        { deadline_at: '2026-01-01T00:00:00.000Z', max_submissions_per_candidate: null },
+        { existingCount: 0, hasAccepted: false },
+        NOW,
+      );
+      assert.equal(denial?.code, 'deadline_passed');
+    });
+
+    test('acceptance is reported before the cap', () => {
+      // "You have used all your attempts" makes no sense to someone who never
+      // entered the task.
+      const denial = checkSubmissionAllowed(
+        { deadline_at: null, max_submissions_per_candidate: 1 },
+        { existingCount: 5, hasAccepted: false },
+        NOW,
+      );
+      assert.equal(denial?.code, 'task_not_accepted');
+    });
   });
 });
 

@@ -9,8 +9,8 @@
  * here rather than being re-derived at each call site.
  *
  * Deliberately pure: no Supabase client, no I/O, no clock of its own. Callers
- * fetch the task's limits and the candidate's current submission count and pass
- * them in. That is what makes the rules testable without a database
+ * fetch the task's limits and the candidate's current state and pass them in.
+ * That is what makes the rules testable without a database
  * (test/submissionRules.test.ts) and what keeps the two paths honest — there is
  * only one implementation to get right.
  */
@@ -20,10 +20,22 @@ export type TaskLimits = {
   max_submissions_per_candidate: number | null;
 };
 
+/**
+ * What the caller must look up about this candidate before asking. Grouped
+ * rather than passed as loose positional arguments so a call site cannot
+ * silently swap the count for the flag.
+ */
+export type CandidateState = {
+  /** Submissions this candidate has already made for this task. */
+  existingCount: number;
+  /** Whether a `task_acceptances` row exists for (task, candidate). */
+  hasAccepted: boolean;
+};
+
 export type SubmissionDenial = {
   /** Stable machine-readable reason. Returned to API callers as `code`. */
-  code: 'deadline_passed' | 'submission_limit_reached';
-  /** HTTP status for the API path. Both denials are state conflicts, not bad input. */
+  code: 'deadline_passed' | 'task_not_accepted' | 'submission_limit_reached';
+  /** HTTP status for the API path. Every denial is a state conflict, not bad input. */
   status: number;
   /** Shown to the candidate in the UI and returned as the API error message. */
   message: string;
@@ -56,13 +68,6 @@ export const hasReachedSubmissionCap = (
   return existingCount >= max;
 };
 
-/**
- * Returns null when the submission is allowed, or the reason it is not.
- *
- * `existingCount` is how many submissions this candidate has already made for
- * this task. Deadline is checked first: once a task is closed, the cap is
- * irrelevant and the deadline is the more useful thing to tell someone.
- */
 export type DeadlineTask = { deadline_at: string | null };
 
 /**
@@ -91,9 +96,22 @@ export const upcomingDeadlines = <T extends DeadlineTask>(
     .sort((a, b) => a.msRemaining - b.msRemaining)
     .slice(0, limit);
 
+/**
+ * Returns null when the submission is allowed, or the reason it is not.
+ *
+ * Order is deliberate, because only the first reason is shown:
+ *  1. Deadline — once a task is closed, nothing the candidate does reopens it.
+ *     Telling them to accept first would send them down a dead end.
+ *  2. Acceptance — the entry gate. Accepting is what puts a candidate in the
+ *     funnel, so a submission without it is work the employer never saw coming
+ *     and a hole in the completion metric (PRD §5, §9.7).
+ *  3. Cap — about how much you have done inside a task you are already in.
+ *     Reporting "you have used all your attempts" to someone who never accepted
+ *     would be nonsense.
+ */
 export const checkSubmissionAllowed = (
   limits: TaskLimits,
-  existingCount: number,
+  candidate: CandidateState,
   now: Date = new Date(),
 ): SubmissionDenial | null => {
   if (isPastDeadline(limits.deadline_at, now)) {
@@ -104,8 +122,16 @@ export const checkSubmissionAllowed = (
     };
   }
 
+  if (!candidate.hasAccepted) {
+    return {
+      code: 'task_not_accepted',
+      status: 409,
+      message: 'Accept this task before submitting to it.',
+    };
+  }
+
   const max = limits.max_submissions_per_candidate;
-  if (hasReachedSubmissionCap(max, existingCount)) {
+  if (hasReachedSubmissionCap(max, candidate.existingCount)) {
     return {
       code: 'submission_limit_reached',
       status: 409,

@@ -72,15 +72,25 @@ export const submitTask = async (
     .maybeSingle();
   if (!task) return { error: 'This task is no longer open.' };
 
-  // `submissions: candidate read own` already restricts this to the caller; the
-  // explicit filter says which task we're counting for.
-  const { count } = await supabase
-    .from('submissions')
-    .select('id', { count: 'exact', head: true })
-    .eq('task_id', taskId)
-    .eq('candidate_id', user.id);
+  // `submissions: candidate read own` and `acceptances: candidate own` already
+  // restrict these to the caller; the explicit filters say which task we mean.
+  const [{ count }, { count: acceptedCount }] = await Promise.all([
+    supabase
+      .from('submissions')
+      .select('id', { count: 'exact', head: true })
+      .eq('task_id', taskId)
+      .eq('candidate_id', user.id),
+    supabase
+      .from('task_acceptances')
+      .select('id', { count: 'exact', head: true })
+      .eq('task_id', taskId)
+      .eq('candidate_id', user.id),
+  ]);
 
-  const denial = checkSubmissionAllowed(task, count ?? 0);
+  const denial = checkSubmissionAllowed(task, {
+    existingCount: count ?? 0,
+    hasAccepted: (acceptedCount ?? 0) > 0,
+  });
   if (denial) return { error: denial.message };
 
   // Submission first — transcript ingest must never block it.

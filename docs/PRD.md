@@ -74,16 +74,106 @@ candidate ranking; the two-sided REST API; magic-link auth.
 résumé parsing, candidate sourcing, messaging between the parties (email is the
 handoff), payments and billing (§11 O4), non-English rubrics.
 
-## §5 Success metrics [NEW] [OPEN]
-
-Directional targets only — no analytics are instrumented yet, so nothing here is
-currently measurable. Instrumenting these is unscheduled work.
+## §5 Success metrics [NEW]
 
 - **Employer activation:** org created → first evaluated submission, same week.
 - **Candidate completion:** accepted → submitted ≥ 40%.
 - **Candidate return:** ≥ 25% of candidates who receive feedback submit a
   second task. (Feedback is the lever — §9.5.)
 - **Trust:** recruiters read the transcript on ≥ 50% of top-3 candidates.
+
+### §5.1 Three of these need no instrumentation
+
+The four targets look alike and are not. Activation, completion and return are
+**derived from state**: `organizations.created_at`, `task_acceptances`,
+`submissions` and `evaluations` already record everything those questions ask
+about, because the product cannot function without recording it. They are
+queries, they were answerable before anyone thought to ask, and they can be
+recomputed for any period in the past.
+
+Trust is **captured from an event**. Whether a recruiter opened a transcript
+leaves no trace in any product table — the transcript ships inside the page's
+HTML and a native `<details>` toggle reveals it, so the server never learns it
+happened. Nothing about it can be reconstructed after the fact.
+
+That asymmetry, not tidiness, is why only the fourth metric goes through the
+event log. Routing the other three through it would trade a complete history for
+a partial one and put a second copy of `submissions` in the database to disagree
+with the first.
+
+### §5.2 The event log
+
+`events` (migration 006) is a generic append-only log: `type`, `actor_id`,
+`org_id`, `subject_type`, `subject_id`, `metadata`, `occurred_at`. Types in use:
+
+| `type` | Written by | Subject |
+|---|---|---|
+| `transcript.read` | `recordTranscriptRead` (`app/recruiter/actions.ts`), fired by `TranscriptDisclosure` | the `submissions` row whose transcript was opened |
+
+**"Read" means the disclosure was expanded.** It is recorded once per mount and
+only on open, so collapsing and re-expanding on one page view is one read while
+returning on a later visit is another. A stronger signal would mean lazy-loading
+the transcript or timing dwell; neither is built, and the metric is named for
+what it actually counts.
+
+### §5.3 Audience: internal. [Decided 2026-08-12]
+
+These aggregates are **not shown to recruiters**, and metric 4 is the reason.
+It measures the recruiter's own attention, and a measure of your own behaviour
+stops measuring it once you are shown it — here more sharply than usual, because
+a "read" is a single click and therefore the cheapest number in the product to
+inflate. Exposing it would answer "did the dashboard work?" in place of the
+question that matters: *does anyone actually care about the process we evaluate?*
+
+The direction is one-way. Internal now can be opened up later; a metric
+recruiters have been optimising for cannot be un-contaminated, and neither can
+the history collected while they were.
+
+Metrics 1–3 carry no such hazard — they measure candidate behaviour, so a
+recruiter reading them is not the person being measured — and are fine to expose
+when there is a reason to.
+
+Enforcement is in the schema, not the UI: `events` has an INSERT policy only, no
+SELECT policy and no SELECT grant, so it is invisible through PostgREST to
+`anon` and `authenticated` alike. `supabase/verify_schema.sql` asserts both, so
+adding a read path later is a deliberate act rather than an accident.
+
+### §5.4 Delivery, and what is still open
+
+`supabase/metrics.sql` (`pnpm run metrics`) is the whole read path — read-only,
+safe on production, run as the service role. A script rather than a page because
+an admin surface would need an admin role, and §6 has only `recruiter` and
+`candidate`.
+
+Metrics 1, 2 and 4 are written. Metric 1 reports as a **funnel** rather than a
+single rate, because the chain from signing up to a first score runs through two
+steps the employer does not control — a candidate has to accept, and then submit.
+Collapsed into one percentage, a demand problem and an onboarding problem are
+indistinguishable, and the number cannot be acted on. Each step therefore names
+whether it depends on the `employer` or the `market`.
+
+**Censoring.** Every rate here is computed over *settled* outcomes only. An
+organization that signed up yesterday has not failed to activate, and a candidate
+who accepted this morning has not failed to submit; counting them as failures
+would understate both rates permanently, and the understatement would grow with
+signups. An org is judged once 7 days have passed; an acceptance is settled once
+the candidate submits, 7 days pass, or the task deadline closes. The unsettled
+count is printed beside each rate so a thin denominator is visible rather than
+implied.
+
+**[OPEN]**
+
+- Metric 3 has no query yet — it is blocked on the definition below, not on work.
+- §5's "candidates who receive feedback" is undefined between *eligible* (a
+  `done` evaluation on a task whose `feedback_visibility` is not `none` —
+  derivable today) and *actually viewed* (a second event type). Eligible is the
+  cheaper and, at this volume, indistinguishable choice.
+- Ranking in `metrics.sql` is computed as of *now*, not as of the read.
+  Evaluations are append-only, so a re-run can move a candidate into or out of
+  the top 3 afterwards. Point-in-time attribution means storing the position on
+  the event in `metadata`, which is what that column is for.
+- No metric has a time series — each run reports the state today, so a trend is
+  something you keep by hand until it is worth storing.
 
 ## §6 Authentication and authorization
 
@@ -473,6 +563,7 @@ one is idempotent:
 | `003_pipeline_smoke` | deploy-pipeline check, not product data |
 | `004_rls_authoritative_and_p1` | §6 privilege-escalation fix, §9.5–§9.8 |
 | `005_drop_template_posts` | removes the `posts` demo table inherited from the starter |
+| `006_events` | §5 event log — insert-only, no read path (§5.2, §5.3) |
 
 `001_posts.sql` was deleted alongside `005`: it created a `posts` table for the
 nextjs-supabase template's example page, which this product never had.

@@ -234,6 +234,44 @@ select * from (
            else 'MISSING'
          end
 
+  -- §5 event log -------------------------------------------------------------
+  union all
+  select '006', 'table events',
+         case when to_regclass('public.events') is null then 'MISSING' else 'PRESENT' end
+
+  union all
+  select '006', 'policy "events: actor inserts own"',
+         case when exists (
+           select 1 from pg_policies where schemaname = 'public'
+             and tablename = 'events' and policyname = 'events: actor inserts own'
+         ) then 'PRESENT' else 'MISSING' end
+
+  -- Assertions, not inventory. Metric 4 measures the recruiter's own attention,
+  -- so it is only meaningful while recruiters cannot see it (PRD §5). Either of
+  -- these turning up would silently contaminate the number rather than break
+  -- anything visibly, which is exactly why they are checked here.
+  union all
+  select '006', 'events has NO select policy (internal-only)',
+         case
+           when to_regclass('public.events') is null then 'MISSING'
+           when exists (
+             select 1 from pg_policies where schemaname = 'public'
+               and tablename = 'events' and cmd in ('SELECT', 'ALL')
+           ) then 'FAILED'
+           else 'PRESENT'
+         end
+
+  union all
+  select '006', 'events not readable by anon/authenticated',
+         case
+           when not exists (select 1 from pg_roles where rolname = 'authenticated') then 'SKIPPED'
+           when to_regclass('public.events') is null then 'MISSING'
+           when has_table_privilege('authenticated', 'public.events', 'select')
+             or has_table_privilege('anon', 'public.events', 'select')
+             then 'FAILED'
+           else 'PRESENT'
+         end
+
 ) as checks
 order by migration, object;
 
@@ -246,7 +284,7 @@ select
   count(*) filter (where status = 'SKIPPED') as skipped,
   case
     when count(*) filter (where status in ('MISSING','FAILED')) = 0
-      then 'OK — schema matches migrations 002-005'
+      then 'OK — schema matches migrations 002-006'
     else 'INCOMPLETE — see MISSING/FAILED rows above'
   end as verdict
 from (
@@ -278,5 +316,16 @@ from (
              select 1 from pg_proc p join pg_namespace n on n.oid = p.pronamespace
              where n.nspname = 'public' and p.proname = 'my_feedback'
            ) then 'PRESENT' else 'MISSING' end
+    union all
+    select case when to_regclass('public.events') is null then 'MISSING' else 'PRESENT' end
+    union all
+    select case
+             when to_regclass('public.events') is null then 'MISSING'
+             when exists (
+               select 1 from pg_policies where schemaname = 'public'
+                 and tablename = 'events' and cmd in ('SELECT', 'ALL')
+             ) then 'FAILED'
+             else 'PRESENT'
+           end
   ) as core
 ) as summary;

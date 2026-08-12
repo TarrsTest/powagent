@@ -10,10 +10,9 @@
 -- why it is a script rather than a page: an admin UI would need an admin role,
 -- which this schema does not have.
 --
--- Metrics 1, 2 and 4 live here. Metric 3 (candidate return) is not written: §5.4
--- has not decided whether "receives feedback" means eligible or actually viewed.
+-- All four §5 metrics live here.
 --
--- Metrics 1 and 2 read nothing but the product tables, so they answer for the
+-- Metrics 1, 2 and 3 read nothing but the product tables, so they answer for the
 -- whole history of the database, including the part that predates this file.
 -- Metric 4 can only see what the event log caught (§5.1).
 --
@@ -233,6 +232,109 @@ where not exists (
   select 1 from task_acceptances ta
   where ta.task_id = s.task_id and ta.candidate_id = s.candidate_id
 );
+
+\echo ''
+\echo '================================================================'
+\echo ' PRD §5 metric 3 — candidate return (feedback -> a second task)'
+\echo '================================================================'
+\echo ''
+\echo 'Read the feedback-adoption block BELOW this one first. Employers'
+\echo 'share feedback per task and the default is none, so a low return'
+\echo 'rate may only mean almost nobody was ever given anything to come'
+\echo 'back for. The denominator here is the population that was.'
+\echo ''
+
+-- Decisions behind this query (PRD §5.4, decided 2026-08-12):
+--  · "receives feedback" = ELIGIBLE to see it. The predicate mirrors
+--    my_feedback()'s own filter — that function is the only path a candidate
+--    reads feedback through, so the metric cannot drift from what they see.
+--    Whether they actually opened it would need a second event type.
+--  · "returns" = submits to a task they had NOT submitted to before the
+--    feedback. A second attempt at the same task is `max_submissions_per_
+--    candidate` being used, not a return; and a task already in flight before
+--    the feedback was not caused by it.
+--  · Any employer counts. This asks whether powagent holds candidates, not
+--    whether one company does.
+--  · One row per candidate, anchored at their FIRST feedback, so a prolific
+--    candidate cannot outweigh everyone else. The question is "do people come
+--    back", and the subject is a person.
+--  · 30-day window, not the 7 days used above: doing another task needs one to
+--    have been published and the candidate to have time for it.
+with feedback as (
+  select s.candidate_id, s.task_id, e.ran_at
+  from evaluations e
+  join submissions s on s.id = e.submission_id
+  join tasks t on t.id = s.task_id
+  where e.status = 'done'
+    and t.feedback_visibility in ('score', 'full')
+    and e.ran_at is not null
+),
+first_feedback as (
+  select candidate_id, min(ran_at) as first_at
+  from feedback
+  group by candidate_id
+),
+outcome as (
+  select
+    f.candidate_id,
+    f.first_at,
+    exists (
+      select 1
+      from submissions s2
+      where s2.candidate_id = f.candidate_id
+        and s2.submitted_at > f.first_at
+        and not exists (
+          select 1 from submissions s0
+          where s0.candidate_id = f.candidate_id
+            and s0.task_id = s2.task_id
+            and s0.submitted_at <= f.first_at
+        )
+    ) as came_back,
+    f.first_at <= now() - interval '30 days' as window_closed
+  from first_feedback f
+)
+select
+  count(*)                                                   as candidates_given_feedback,
+  count(*) filter (where came_back or window_closed)         as settled,
+  count(*) filter (where came_back)                          as came_back,
+  round(100.0 * count(*) filter (where came_back)
+        / nullif(count(*) filter (where came_back or window_closed), 0), 1) as return_rate_pct,
+  25.0                                                       as target_pct,
+  count(*) filter (where not came_back and not window_closed) as still_in_window
+from outcome;
+
+\echo ''
+\echo '--- feedback adoption: is there a denominator at all? ---'
+\echo ''
+\echo 'tasks.feedback_visibility defaults to none, so a candidate sees'
+\echo 'nothing unless the employer opts in per task. If pct_sharing is'
+\echo 'near zero, metric 3 above is measuring an empty set and the thing'
+\echo 'to fix is employer adoption, not candidate retention.'
+\echo ''
+
+select
+  count(*)                                                    as tasks_total,
+  count(*) filter (where feedback_visibility = 'none')        as sharing_nothing,
+  count(*) filter (where feedback_visibility = 'score')       as sharing_score_only,
+  count(*) filter (where feedback_visibility = 'full')        as sharing_full,
+  round(100.0 * count(*) filter (where feedback_visibility <> 'none')
+        / nullif(count(*), 0), 1)                             as pct_sharing
+from tasks;
+
+select
+  (select count(*) from organizations)                        as orgs_total,
+  count(distinct j.org_id)                                    as orgs_sharing_on_some_task
+from jobs j
+join tasks t on t.job_id = j.id
+where t.feedback_visibility <> 'none';
+
+\echo ''
+\echo 'Known limit: a candidate becomes eligible the moment the employer'
+\echo 'turns sharing on, which may be LATER than the evaluation. There is'
+\echo 'no history of feedback_visibility changes, so the evaluation time is'
+\echo 'used as the anchor and a late opt-in overstates how long someone had'
+\echo 'their feedback. Same class as the ranking caveat under metric 4.'
+\echo ''
 
 \echo ''
 \echo '================================================================'

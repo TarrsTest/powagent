@@ -82,6 +82,37 @@ export const createRubric = async (formData: FormData) => {
   revalidatePath('/recruiter');
 };
 
+/**
+ * PRD §5 metric 4 — record that a recruiter opened a candidate's agent
+ * transcript.
+ *
+ * "Read" here means "expanded the disclosure". The transcript ships inside the
+ * page's HTML, so there is no server round trip to observe and no stronger
+ * signal available without lazy-loading it; the honest name for what this counts
+ * is an open, and §5 says so.
+ *
+ * Fire-and-forget on purpose: analytics must never break the interaction it is
+ * measuring, so a failed insert is swallowed. `org_id` and `actor_id` come from
+ * the session rather than the caller — a client can still pass any submission
+ * id, but the analysis joins events back through submissions -> tasks -> jobs
+ * and drops rows whose org does not match, so a forged subject cannot inflate a
+ * real number. No revalidatePath: recording a read must not re-render the page.
+ */
+export const recordTranscriptRead = async (submissionId: string) => {
+  if (!submissionId) return;
+  const session = await getProfile();
+  if (!session || session.profile.role !== 'recruiter' || !session.profile.org_id) return;
+
+  const supabase = await createClient();
+  await supabase.from('events').insert({
+    type: 'transcript.read',
+    actor_id: session.userId,
+    org_id: session.profile.org_id,
+    subject_type: 'submission',
+    subject_id: submissionId,
+  });
+};
+
 export const runEvaluate = async (formData: FormData) => {
   const orgId = await requireOrg();
   if (!orgId) return;

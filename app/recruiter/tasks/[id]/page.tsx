@@ -5,7 +5,8 @@ import { faArrowLeft, faFlag, faPlay, faRankingStar, faHandshake } from '@fortaw
 import { getProfile } from '@/lib/profile';
 import { createClient } from '@/lib/supabase/server';
 import Brand from '@/components/Brand';
-import { runEvaluate, setFeedbackVisibility } from '../../actions';
+import { runEvaluate, setFeedbackVisibility, recordTranscriptRead } from '../../actions';
+import TranscriptDisclosure from './TranscriptDisclosure';
 
 type EvalRow = {
   id: string;
@@ -141,7 +142,12 @@ export default async function TaskSubmissionsPage(props: { params: Promise<{ id:
                   <pre className="mt-2 text-xs whitespace-pre-wrap bg-slate-50 border border-slate-200 rounded-lg p-3 text-slate-700">{s.result_md}</pre>
                 </details>
 
-                <details className="mb-3 group">
+                {/* §5 metric 4 — opening this is the signal that the process,
+                    not just the deliverable, is being looked at. */}
+                <TranscriptDisclosure
+                  className="mb-3 group"
+                  onFirstOpen={recordTranscriptRead.bind(null, s.id)}
+                >
                   <summary className="text-sm font-semibold text-slate-800 cursor-pointer select-none">
                     Agent transcript{' '}
                     <span className="text-xs font-normal text-slate-400">
@@ -151,7 +157,7 @@ export default async function TaskSubmissionsPage(props: { params: Promise<{ id:
                   <pre className="mt-2 text-xs whitespace-pre-wrap bg-slate-50 border border-slate-200 rounded-lg p-3 text-slate-700">
                     {artifact?.raw_md ?? '(no transcript / fetch failed)'}
                   </pre>
-                </details>
+                </TranscriptDisclosure>
 
                 {/* Trigger evaluation */}
                 {rubricList.length > 0 && (

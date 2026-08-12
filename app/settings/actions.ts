@@ -3,7 +3,7 @@
 import { revalidatePath } from 'next/cache';
 import { createClient } from '@/lib/supabase/server';
 import { createServiceClient } from '@/lib/supabase/service';
-import { generateKey, SCOPES } from '@/lib/apikey';
+import { generateKey, normalizeScopes } from '@/lib/apikey';
 
 /**
  * Onboarding, org membership and API-key management.
@@ -102,10 +102,17 @@ export const acceptInvite = async (formData: FormData) => {
 
 // PRIVILEGED — issues a key and returns the raw value ONCE (shown via
 // useActionState in the client form); only the hash is persisted.
+//
+// The scope selection is the only part of this that comes from the browser, and
+// it is treated as a request rather than an instruction: `normalizeScopes`
+// checks every value against what THIS owner type may hold, and the owner type
+// itself is still derived from the stored profile below — never from the form.
+// So the worst a crafted POST can do is name a scope it is not entitled to and
+// be refused.
 export const issueKey = async (
-  _prev: { rawKey?: string; error?: string } | null,
-  _formData: FormData,
-): Promise<{ rawKey?: string; error?: string }> => {
+  _prev: { rawKey?: string; scopes?: string[]; error?: string } | null,
+  formData: FormData,
+): Promise<{ rawKey?: string; scopes?: string[]; error?: string }> => {
   const supabase = await createClient();
   const {
     data: { user },
@@ -125,16 +132,18 @@ export const issueKey = async (
 
   const ownerType = isOrg ? 'org' : 'candidate';
   const ownerId = isOrg ? (profile.org_id as string) : user.id;
-  const scopes = isOrg ? [...SCOPES.org] : [...SCOPES.candidate];
 
-  const { raw, key_hash, key_prefix } = generateKey(ownerType);
+  const selection = normalizeScopes(ownerType, formData.getAll('scopes').map(String));
+  if (!selection.ok) return { error: selection.error };
+
+  const { raw, key_hash, key_prefix, scopes } = generateKey(ownerType, selection.scopes);
   const { error } = await db
     .from('api_keys')
     .insert({ owner_type: ownerType, owner_id: ownerId, key_hash, key_prefix, scopes });
   if (error) return { error: error.message };
 
   revalidatePath('/settings');
-  return { rawKey: raw };
+  return { rawKey: raw, scopes };
 };
 
 // PRIVILEGED — revoke a key the caller owns. api_keys has no UPDATE policy, so

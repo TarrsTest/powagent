@@ -59,13 +59,14 @@ sections. Binding architecture rules for anyone changing this repo:
 
 1. **Browse open tasks** (`/tasks`) — no account needed.
 2. **Sign in** with a magic link when you want to take one.
-3. **Accept a task** so the employer can see you're working on it. Idempotent.
+3. **Accept a task** — required before you can submit, so the employer sees who
+   is working on it. Idempotent.
 4. **Submit** your deliverable plus your agent transcript — paste the markdown,
    or give a public share URL and the server fetches it. A dead link degrades to
    `fetch_status='failed'`; it never blocks your submission.
-5. **Limits are enforced on both entry points** (UI and API): past the deadline,
-   or at the per-candidate cap, and the submission is refused with a clear
-   reason. See [`lib/submissionRules.ts`](lib/submissionRules.ts).
+5. **Rules are enforced on both entry points** (UI and API): past the deadline,
+   not accepted, or at the per-candidate cap, and the submission is refused with
+   a clear reason. See [`lib/submissionRules.ts`](lib/submissionRules.ts).
 6. **See your result** if the employer chose to share it — score only, or score
    plus rationale and per-dimension breakdown.
 

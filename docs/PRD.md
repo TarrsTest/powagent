@@ -276,6 +276,14 @@ Accepting a task is persisted (`task_acceptances`, unique per task+candidate,
 idempotent). It answers "how many candidates are working on this?" before any
 submission lands, and gives the funnel a first step.
 
+**Acceptance is a prerequisite for submitting** (decided 2026-08-12, enforced in
+§9.9). Until then it was optional on both paths, so a candidate could submit
+without ever appearing in `task_acceptances` — the employer had no warning that
+work was coming, and those submissions sat outside the accepted → submitted
+funnel entirely, which made the §5 completion rate unmeasurable rather than
+merely low. The gate is app-layer on both paths; see §9.9 for what that does and
+does not cover.
+
 **[OPEN]** Deadlines are absolute (`deadline_at`), not "N hours from
 acceptance". Now that acceptance has a timestamp, relative deadlines are
 possible but not implemented.
@@ -302,13 +310,19 @@ Both rules live in `lib/leaderboard.ts` and are shared by the UI and the API.
 
 ### §9.9 Submission limits
 
-A task may carry two limits, both enforced on **every** path that writes a
-submission — the `/tasks` Server Action and `POST /v1/submissions`:
+Three rules decide whether a submission is accepted, all enforced on **every**
+path that writes one — the `/tasks` Server Action and `POST /v1/submissions`:
 
-| Limit | Denial | API status |
+| Rule | Denial | API status |
 |---|---|---|
 | `deadline_at` passed | `deadline_passed` | 409 |
+| no `task_acceptances` row for (task, candidate) | `task_not_accepted` | 409 |
 | `max_submissions_per_candidate` reached | `submission_limit_reached` | 409 |
+
+Only the first matching reason is reported, so the order is part of the
+behaviour: a closed task reports its deadline rather than sending the candidate
+to an Accept button that cannot reopen it, and someone who never accepted is
+told so rather than being told they have used attempts they never had.
 
 The rules live in `lib/submissionRules.ts` as pure predicates — no client, no
 I/O, no clock of their own; callers pass in the task's limits and the
@@ -328,8 +342,15 @@ candidates out of a task.
 #### Remaining gaps [OPEN]
 
 - `agent_allowed` is stored and never read; its semantics are undefined.
-- API-key scopes cannot be chosen at issue time — every key gets its owner
-  type's full set, which makes the scope system decorative in practice.
+- **All three rules are app-layer only.** `submissions: candidate insert own`
+  checks nothing beyond `candidate_id = auth.uid()`, so a candidate posting
+  straight to PostgREST with the anon key and their own session bypasses the
+  deadline, the acceptance gate and the cap alike. Closing it means moving the
+  conditions into the insert policy; that cannot be verified without a live
+  database (§11 O5), so it is recorded here rather than shipped unverified.
+
+> API-key scopes were listed here as decorative until 2026-08-11, when
+> `normalizeScopes` made them selectable and enforced at issue time (§6).
 
 ## §10 Data model
 

@@ -102,8 +102,11 @@ export default async function TasksPage() {
             const mine = subsByTask.get(t.id) ?? [];
             const isAccepted = acceptedTasks.has(t.id);
             // Same rules the Server Action enforces, applied here so a closed
-            // task explains itself instead of offering a form that will refuse.
-            const denial = userId ? checkSubmissionAllowed(t, mine.length) : null;
+            // task — or one this candidate has not accepted yet — explains
+            // itself instead of offering a form that will refuse.
+            const denial = userId
+              ? checkSubmissionAllowed(t, { existingCount: mine.length, hasAccepted: isAccepted })
+              : null;
             return (
               <li key={t.id} className="card p-6">
                 <div className="flex items-center justify-between gap-3">

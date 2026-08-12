@@ -49,17 +49,33 @@ export async function POST(req: Request) {
   if (taskErr) return err(500, taskErr.message);
   if (!task) return err(404, 'task not found or not open');
 
-  // Deadline + per-candidate cap. Decided by lib/submissionRules, which the UI
-  // Server Action also calls — one implementation, so the two entry points
-  // cannot drift apart again (PRD §9.9).
-  const { count, error: countErr } = await db
-    .from('submissions')
-    .select('id', { count: 'exact', head: true })
-    .eq('task_id', taskId)
-    .eq('candidate_id', key.ownerId);
+  // Deadline + acceptance + per-candidate cap. Decided by lib/submissionRules,
+  // which the UI Server Action also calls — one implementation, so the two entry
+  // points cannot drift apart again (PRD §9.9).
+  //
+  // Acceptance is a gate here too: a key holding submissions:write but not
+  // tasks:accept cannot submit to a task it never accepted, which is the point —
+  // the funnel starts at acceptance on both paths or on neither.
+  const [{ count, error: countErr }, { count: acceptedCount, error: acceptErr }] =
+    await Promise.all([
+      db
+        .from('submissions')
+        .select('id', { count: 'exact', head: true })
+        .eq('task_id', taskId)
+        .eq('candidate_id', key.ownerId),
+      db
+        .from('task_acceptances')
+        .select('id', { count: 'exact', head: true })
+        .eq('task_id', taskId)
+        .eq('candidate_id', key.ownerId),
+    ]);
   if (countErr) return err(500, countErr.message);
+  if (acceptErr) return err(500, acceptErr.message);
 
-  const denial = checkSubmissionAllowed(task, count ?? 0);
+  const denial = checkSubmissionAllowed(task, {
+    existingCount: count ?? 0,
+    hasAccepted: (acceptedCount ?? 0) > 0,
+  });
   if (denial) return err(denial.status, denial.message, { code: denial.code });
 
   // Insert the submission first — never blocked by transcript ingest.

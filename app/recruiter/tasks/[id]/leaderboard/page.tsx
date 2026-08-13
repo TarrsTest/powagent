@@ -65,23 +65,23 @@ export default async function LeaderboardPage(props: { params: Promise<{ id: str
         <div>
           <Link
             href={`/recruiter/tasks/${taskId}`}
-            className="text-sm text-slate-500 hover:text-slate-800 inline-flex items-center gap-1.5"
+            className="text-sm text-muted hover:text-ink inline-flex items-center gap-1.5"
           >
             <FontAwesomeIcon icon={faArrowLeft} className="w-3 h-3" /> Submissions
           </Link>
-          <h1 className="text-2xl font-bold tracking-tight text-slate-900 mt-2 flex items-center gap-2">
-            <FontAwesomeIcon icon={faRankingStar} className="w-5 h-5 text-sky-700" />
+          <h1 className="text-2xl font-bold tracking-tight text-ink mt-2 flex items-center gap-2">
+            <FontAwesomeIcon icon={faRankingStar} className="w-5 h-5 text-accent" />
             {task.title}
           </h1>
-          <p className="text-sm text-slate-500 mt-1">
+          <p className="text-sm text-muted mt-1">
             {ranked.length} ranked{unscored > 0 && ` · ${unscored} awaiting evaluation`}
           </p>
         </div>
 
         {ranked.length === 0 ? (
-          <p className="text-sm text-slate-500">
+          <p className="text-sm text-muted">
             Nothing ranked yet — evaluate at least one submission from the{' '}
-            <Link href={`/recruiter/tasks/${taskId}`} className="text-sky-700 hover:underline">
+            <Link href={`/recruiter/tasks/${taskId}`} className="text-accent hover:underline">
               submissions view
             </Link>
             .
@@ -90,27 +90,27 @@ export default async function LeaderboardPage(props: { params: Promise<{ id: str
           <ul className="space-y-3">
             {ranked.map((c, i) => (
               <li key={c.candidateId} className="card p-5 flex items-start gap-4">
-                <span className="shrink-0 w-7 text-center text-sm font-mono text-slate-400 mt-0.5">{i + 1}</span>
+                <span className="shrink-0 w-7 text-center text-sm font-mono text-subtle mt-0.5">{i + 1}</span>
                 <div className="min-w-0 flex-1">
                   <div className="flex items-center justify-between gap-3">
                     {c.email ? (
-                      <a href={`mailto:${c.email}`} className="font-medium text-sky-700 hover:underline truncate">
+                      <a href={`mailto:${c.email}`} className="font-medium text-accent hover:underline truncate">
                         {c.email}
                       </a>
                     ) : (
-                      <span className="font-mono text-xs text-slate-400 truncate">
+                      <span className="font-mono text-xs text-subtle truncate">
                         candidate {c.candidateId.slice(0, 8)}…
                       </span>
                     )}
-                    <span className="shrink-0 text-sm font-bold tabular-nums text-slate-900">{c.score}</span>
+                    <span className="shrink-0 text-sm font-bold tabular-nums text-ink">{c.score}</span>
                   </div>
 
-                  <div className="mt-1.5 h-1.5 rounded-full bg-slate-100 overflow-hidden">
+                  <div className="mt-1.5 h-1.5 rounded-full bg-elevated overflow-hidden">
                     <div className={`h-full rounded-full ${barTone(c.score)}`} style={{ width: `${c.score}%` }} />
                   </div>
 
                   {c.evaluation.output_json?.rationale && (
-                    <p className="text-xs text-slate-500 mt-1.5">{c.evaluation.output_json.rationale}</p>
+                    <p className="text-xs text-muted mt-1.5">{c.evaluation.output_json.rationale}</p>
                   )}
 
                   <div className="flex items-center flex-wrap gap-1.5 mt-2">

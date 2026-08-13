@@ -36,16 +36,16 @@ export default function IssueKeyForm({ scopeOptions }: { scopeOptions: ScopeOpti
             accessible name — it cannot be tucked into a flex row with the
             toggle. The toggle sits beside the helper text instead. */}
         <fieldset className="space-y-2">
-          <legend className="text-sm font-medium text-slate-900">Permissions</legend>
+          <legend className="text-sm font-medium text-ink">Permissions</legend>
           <div className="flex items-start justify-between gap-3">
-            <p className="text-xs text-slate-500">
+            <p className="text-xs text-muted">
               A key can only do what you tick here. Pick the narrowest set that does the job — you
               can always issue another key.
             </p>
             <button
               type="button"
               onClick={() => setSelected(allSelected ? [] : scopeOptions.map((s) => s.value))}
-              className="text-xs text-sky-700 hover:underline cursor-pointer shrink-0"
+              className="text-xs text-accent hover:underline cursor-pointer shrink-0"
             >
               {allSelected ? 'Clear all' : 'Select all'}
             </button>
@@ -55,7 +55,7 @@ export default function IssueKeyForm({ scopeOptions }: { scopeOptions: ScopeOpti
             {scopeOptions.map(({ value, label, description }) => (
               <label
                 key={value}
-                className="flex gap-2.5 items-start rounded-lg border border-slate-200 px-3 py-2 hover:bg-slate-50 cursor-pointer"
+                className="flex gap-2.5 items-start rounded-lg border border-hairline px-3 py-2 hover:bg-elevated cursor-pointer"
               >
                 <input
                   type="checkbox"
@@ -66,10 +66,10 @@ export default function IssueKeyForm({ scopeOptions }: { scopeOptions: ScopeOpti
                   className="mt-0.5 w-4 h-4 accent-sky-600 cursor-pointer"
                 />
                 <span className="min-w-0">
-                  <span className="block text-sm font-medium text-slate-800">
-                    {label} <code className="text-xs font-mono text-slate-400">{value}</code>
+                  <span className="block text-sm font-medium text-ink">
+                    {label} <code className="text-xs font-mono text-subtle">{value}</code>
                   </span>
-                  <span className="block text-xs text-slate-500">{description}</span>
+                  <span className="block text-xs text-muted">{description}</span>
                 </span>
               </label>
             ))}
@@ -83,7 +83,7 @@ export default function IssueKeyForm({ scopeOptions }: { scopeOptions: ScopeOpti
           </button>
           {/* Announced, because the submit button's disabled state depends on it
               and a screen-reader user needs to hear why it will not submit. */}
-          <span className="text-xs text-slate-500" aria-live="polite">
+          <span className="text-xs text-muted" aria-live="polite">
             {none
               ? 'Select at least one permission.'
               : `${selected.length} of ${scopeOptions.length} selected`}
@@ -92,23 +92,23 @@ export default function IssueKeyForm({ scopeOptions }: { scopeOptions: ScopeOpti
       </form>
 
       {state?.error && (
-        <p className="text-sm text-red-600 flex items-center gap-2" role="alert">
+        <p className="text-sm text-red-400 flex items-center gap-2" role="alert">
           <FontAwesomeIcon icon={faTriangleExclamation} className="w-3.5 h-3.5" />
           {state.error}
         </p>
       )}
 
       {state?.rawKey && (
-        <div className="rounded-lg border border-amber-300 bg-amber-50 p-4 space-y-2" role="status">
-          <p className="text-xs font-semibold text-amber-800 flex items-center gap-2">
+        <div className="rounded-lg border border-amber-500/40 bg-amber-500/10 p-4 space-y-2" role="status">
+          <p className="text-xs font-semibold text-amber-200 flex items-center gap-2">
             <FontAwesomeIcon icon={faCircleCheck} className="w-3.5 h-3.5" />
             Copy this key now — it won’t be shown again.
           </p>
-          <code className="block text-xs font-mono break-all bg-white border border-amber-200 rounded px-2 py-1.5">
+          <code className="block text-xs font-mono break-all bg-surface border border-amber-500/30 rounded px-2 py-1.5">
             {state.rawKey}
           </code>
           {state.scopes && (
-            <p className="text-xs text-amber-800">
+            <p className="text-xs text-amber-200">
               Granted:{' '}
               {state.scopes.map((s) => (
                 <code key={s} className="font-mono mr-1.5">{s}</code>

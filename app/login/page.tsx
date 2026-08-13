@@ -37,13 +37,13 @@ export default function LoginPage() {
       {/* Without this there is no way out of /login except the back button. */}
       <Brand />
       <div className="w-full max-w-sm card p-8">
-        <div className="inline-flex items-center justify-center w-11 h-11 rounded-xl bg-sky-50 text-sky-700 mb-5">
+        <div className="inline-flex items-center justify-center w-11 h-11 rounded-xl bg-accent-soft text-accent mb-5">
           <FontAwesomeIcon icon={sent ? faCheck : faEnvelope} className="w-4 h-4" />
         </div>
-        <h1 className="text-2xl font-bold tracking-tight text-slate-900 mb-2">
+        <h1 className="text-2xl font-bold tracking-tight text-ink mb-2">
           {sent ? 'Check your email' : 'Sign in to powagent'}
         </h1>
-        <p className="text-sm text-slate-600 mb-6">
+        <p className="text-sm text-muted mb-6">
           {sent
             ? `We sent a magic link to ${email}. Click it to sign in.`
             : 'Enter your email — we’ll send you a magic link.'}
@@ -61,7 +61,7 @@ export default function LoginPage() {
               className="field h-11"
             />
             {err && (
-              <p className="text-sm text-red-600">{err}</p>
+              <p className="text-sm text-red-400">{err}</p>
             )}
             <button
               type="submit"

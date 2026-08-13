@@ -77,7 +77,7 @@ export default async function Home() {
         {/* Dark mode only: this card is the page's showpiece, so it takes a
             deep-rose fill instead of the default plum surface. Light mode is
             untouched — `.card` still supplies its white background there. */}
-        <div className="card p-6 sm:p-8 dark:bg-surface-rose">
+        <div className="panel p-6 sm:p-8 dark:bg-surface-rose">
           <div className="flex items-center justify-between mb-5">
             <div>
               <p className="text-xs font-mono text-subtle">TASK · RANKED</p>
@@ -109,7 +109,7 @@ export default async function Home() {
       <section className="max-w-5xl mx-auto px-6 pb-20">
         <div className="grid gap-4 sm:grid-cols-3">
           {steps.map((s, i) => (
-            <div key={s.title} className="card p-6 bg-accent-soft/50 border-accent-line">
+            <div key={s.title} className="panel-interactive p-6 bg-accent-soft/50 border-accent-line">
               <div className="flex items-center gap-3 mb-3">
                 <span className="inline-flex items-center justify-center w-9 h-9 rounded-lg bg-primary/25 text-accent">
                   <FontAwesomeIcon icon={s.icon} className="w-4 h-4" />
@@ -130,10 +130,13 @@ export default async function Home() {
             Hiring signal you can trust
           </h2>
         </div>
+        {/* The glass panels. `panel-interactive panel-lg` is the full treatment:
+            28px radius, blurred translucent material, a lit top edge, an ambient
+            pink shadow, and a 2px lift on hover. */}
         <div className="grid gap-4 sm:grid-cols-2">
           {reasons.map((r) => (
-            <div key={r.title} className="card p-6 flex items-start gap-4">
-              <span className="shrink-0 inline-flex items-center justify-center w-10 h-10 rounded-xl bg-elevated text-accent">
+            <div key={r.title} className="panel-interactive panel-lg p-6 flex items-start gap-4">
+              <span className="shrink-0 inline-flex items-center justify-center w-10 h-10 rounded-xl bg-accent-soft text-accent ring-1 ring-accent-line">
                 <FontAwesomeIcon icon={r.icon} className="w-4 h-4" />
               </span>
               <div>

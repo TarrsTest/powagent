@@ -100,48 +100,193 @@ html.dark {
   color-scheme: dark;
 }
 
+/* ===========================================================================
+   GLASS MATERIAL
+   ===========================================================================
+   The palette above says what colour things are. This says what they are made
+   of: translucency, blur, radius, the lit top edge and the ambient shadow.
+
+   Kept separate from the @theme block on purpose. These are not colours a page
+   ever names — no utility is generated from them and no page file mentions
+   them; they are consumed only by the component classes below. That is why
+   --color-surface stays an opaque fill: pages use `bg-surface` on list rows and
+   inline chips where a translucent background would show the row beneath it.
+   Glass is a property of panels, not of every surface.
+
+   The shadow is pink-violet rather than grey-black in light mode, which is most
+   of what separates this from a generic frosted-glass effect. In dark mode it
+   is deep transparent black plus a very weak pink ambient — enough to separate
+   panel layers without glowing. */
+:root {
+  --glass-blur: 24px;
+  --glass-saturate: 150%;
+
+  --radius-panel: 28px;
+  --radius-card: 20px;
+  --radius-control: 14px;
+
+  /* 180-220ms per the brief; the ease is Apple-ish, settling without overshoot. */
+  --ease-glass: cubic-bezier(0.22, 1, 0.36, 1);
+  --dur-theme: 200ms;
+
+  --glass-surface: rgba(255, 255, 255, 0.38);
+  --glass-elevated: rgba(255, 255, 255, 0.60);
+  /* Opaque stand-ins for browsers without backdrop-filter — see @supports. */
+  --glass-surface-solid: #fffafc;
+  --glass-elevated-solid: #fff4f8;
+
+  --glass-border: rgba(255, 255, 255, 0.55);
+  --glass-border-strong: rgba(196, 146, 172, 0.42);
+  --glass-highlight: rgba(255, 255, 255, 0.85);
+
+  --glass-shadow-ambient: rgba(190, 110, 155, 0.22);
+  --glass-shadow-contact: rgba(150, 90, 135, 0.12);
+  --glass-shadow-lift: rgba(190, 110, 155, 0.30);
+
+  /* Canvas gradient stops + the two ambient light sources the panels blur. */
+  --glass-bg-1: #fff1f7;
+  --glass-bg-2: #f5eeff;
+  --glass-bg-3: #fffaf7;
+  --glass-glow-a: rgba(245, 139, 183, 0.30);
+  --glass-glow-b: rgba(167, 139, 250, 0.20);
+}
+
+html.dark {
+  --glass-saturate: 130%;
+
+  --glass-surface: rgba(30, 24, 33, 0.58);
+  --glass-elevated: rgba(52, 42, 57, 0.60);
+  --glass-surface-solid: #1b1620;
+  --glass-elevated-solid: #2a2230;
+
+  --glass-border: rgba(255, 210, 230, 0.14);
+  --glass-border-strong: rgba(255, 210, 230, 0.24);
+  --glass-highlight: rgba(255, 220, 238, 0.10);
+
+  --glass-shadow-ambient: rgba(0, 0, 0, 0.55);
+  --glass-shadow-contact: rgba(0, 0, 0, 0.38);
+  --glass-shadow-lift: rgba(0, 0, 0, 0.62);
+
+  --glass-bg-1: #0d0b10;
+  --glass-bg-2: #150e18;
+  --glass-bg-3: #1a101b;
+  --glass-glow-a: rgba(255, 143, 190, 0.10);
+  --glass-glow-b: rgba(168, 120, 220, 0.08);
+}
+
 body {
-  background-color: var(--color-canvas);
+  min-height: 100dvh;
   color: var(--color-ink);
+  /* Flat canvas colour underneath, so the page is never bare if the gradient
+     fails to paint; the glow layers on top are what the panels actually blur. */
+  background-color: var(--color-canvas);
+  background-image:
+    radial-gradient(70rem 40rem at 12% -12%, var(--glass-glow-a), transparent 62%),
+    radial-gradient(55rem 34rem at 92% 4%, var(--glass-glow-b), transparent 58%),
+    linear-gradient(165deg, var(--glass-bg-1) 0%, var(--glass-bg-2) 48%, var(--glass-bg-3) 100%);
+  background-attachment: fixed;
+  transition: background-color var(--dur-theme) ease, color var(--dur-theme) ease;
 }
 
 @layer components {
-  /* Surfaces */
-  .card {
-    @apply bg-surface border border-hairline rounded-2xl shadow-sm;
+  /* Surfaces — glass. `.panel` is the main surface (28px), `.card` the inner
+     one (20px), and `.panel-interactive` / `.card-link` add the hover lift.
+     background-color rather than a shorthand, so a page can still override just
+     the fill (the landing page's `dark:bg-surface-rose` does exactly that). */
+  .panel,
+  .card,
+  .card-link,
+  .panel-interactive {
+    background-color: var(--glass-surface);
+    -webkit-backdrop-filter: blur(var(--glass-blur)) saturate(var(--glass-saturate));
+    backdrop-filter: blur(var(--glass-blur)) saturate(var(--glass-saturate));
+    border: 1px solid var(--glass-border);
+    box-shadow:
+      0 16px 40px -28px var(--glass-shadow-ambient),
+      inset 0 1px 0 var(--glass-highlight);
   }
-  .card-link {
-    @apply bg-surface border border-hairline rounded-2xl shadow-sm transition
-           hover:bg-elevated hover:border-accent-line;
+
+  .panel {
+    border-radius: var(--radius-panel);
+    box-shadow:
+      0 24px 60px -28px var(--glass-shadow-ambient),
+      0 6px 18px -12px var(--glass-shadow-contact),
+      inset 0 1px 0 var(--glass-highlight);
+  }
+  .card,
+  .card-link,
+  .panel-interactive { border-radius: var(--radius-card); }
+
+  /* Promotes a card-radius surface to panel radius. */
+  .panel-lg { border-radius: var(--radius-panel); }
+
+  .card-link,
+  .panel-interactive {
+    transition:
+      transform var(--dur-theme) var(--ease-glass),
+      box-shadow var(--dur-theme) var(--ease-glass),
+      border-color var(--dur-theme) var(--ease-glass),
+      background-color var(--dur-theme) ease;
+  }
+  .card-link:hover,
+  .panel-interactive:hover {
+    transform: translateY(-2px);
+    border-color: var(--color-accent-line);
+    box-shadow:
+      0 30px 70px -26px var(--glass-shadow-lift),
+      0 8px 20px -12px var(--glass-shadow-contact),
+      inset 0 1px 0 var(--glass-highlight);
+  }
+  .card-link:focus-visible,
+  .panel-interactive:focus-visible {
+    outline: none;
+    border-color: var(--color-accent-line);
   }
 
   /* Buttons */
   .btn {
-    @apply inline-flex items-center justify-center gap-2 h-10 px-4 rounded-lg
+    @apply inline-flex items-center justify-center gap-2 h-10 px-4
            text-sm font-semibold transition-colors cursor-pointer
            focus-visible:outline-none focus-visible:ring-2
            focus-visible:ring-primary-soft/50 disabled:opacity-50
            disabled:cursor-not-allowed;
+    border-radius: var(--radius-control);
   }
+  .btn:not(:disabled):active { transform: translateY(1px); }
   .btn-primary { @apply bg-primary text-white hover:bg-primary-soft; }
   /* Highest-emphasis button: ink-on-canvas, so it inverts with the theme for
      free — near-black on light, near-white on dark. Hover is opacity rather
      than a second colour, which would have to be theme-specific. */
   .btn-dark    { @apply bg-ink text-canvas hover:opacity-90; }
-  .btn-ghost   { @apply border border-hairline text-ink-soft hover:bg-elevated; }
-  .btn-sm      { @apply h-9 px-3 text-xs; }
+  /* Ghost is the button form of the panel material — glass, not a bare border. */
+  .btn-ghost {
+    @apply text-ink-soft;
+    background-color: var(--glass-elevated);
+    -webkit-backdrop-filter: blur(12px) saturate(var(--glass-saturate));
+    backdrop-filter: blur(12px) saturate(var(--glass-saturate));
+    border: 1px solid var(--glass-border);
+    box-shadow: inset 0 1px 0 var(--glass-highlight);
+  }
+  .btn-ghost:not(:disabled):hover {
+    border-color: var(--color-accent-line);
+    @apply text-ink;
+  }
+  .btn-sm { @apply h-9 px-3 text-xs; border-radius: calc(var(--radius-control) - 3px); }
 
-  /* Form controls — inset, so darker than the card they sit on. */
-  .field {
-    @apply w-full h-10 px-3 rounded-lg border border-hairline bg-canvas text-sm
-           text-ink placeholder:text-subtle transition
-           focus:outline-none focus:border-primary-soft focus:ring-2 focus:ring-primary-soft/25;
-  }
+  /* Form controls — inputs should read as holes in the glass, not as more
+     panels stacked on it, so the border is the stronger of the two. */
+  .field,
   .field-area {
-    @apply w-full px-3 py-2 rounded-lg border border-hairline bg-canvas text-sm
-           text-ink placeholder:text-subtle transition
+    @apply w-full text-sm text-ink placeholder:text-subtle transition
            focus:outline-none focus:border-primary-soft focus:ring-2 focus:ring-primary-soft/25;
+    background-color: var(--glass-elevated);
+    -webkit-backdrop-filter: blur(12px) saturate(var(--glass-saturate));
+    backdrop-filter: blur(12px) saturate(var(--glass-saturate));
+    border: 1px solid var(--glass-border-strong);
+    border-radius: var(--radius-control);
   }
+  .field { @apply h-10 px-3; }
+  .field-area { @apply px-3 py-2; }
   .label { @apply block text-sm font-medium text-ink-soft; }
 
   /* Badges — a tinted fill reads on either theme, but the status TEXT has to
@@ -154,8 +299,92 @@ body {
   .badge-success { @apply bg-emerald-500/15 text-emerald-700 dark:text-emerald-300; }
   .badge-warn    { @apply bg-amber-500/15 text-amber-700 dark:text-amber-300; }
   .badge-danger  { @apply bg-red-500/15 text-red-700 dark:text-red-300; }
+
+  /* Overlay surfaces. This codebase has no Modal / Dropdown / Tooltip component
+     yet — menus are native <select> and disclosures are <details>. These are
+     the materials such components should use when they arrive, so the first one
+     written does not invent its own glass. Opacity is higher than .panel
+     because a floating surface must stay readable over arbitrary content. */
+  .surface-overlay {
+    background-color: var(--glass-elevated);
+    -webkit-backdrop-filter: blur(30px) saturate(var(--glass-saturate));
+    backdrop-filter: blur(30px) saturate(var(--glass-saturate));
+    border: 1px solid var(--glass-border);
+    border-radius: var(--radius-card);
+    box-shadow:
+      0 32px 80px -24px var(--glass-shadow-ambient),
+      0 10px 24px -14px var(--glass-shadow-contact),
+      inset 0 1px 0 var(--glass-highlight);
+  }
+  .scrim {
+    background-color: rgb(64 30 50 / 0.28);
+    -webkit-backdrop-filter: blur(6px);
+    backdrop-filter: blur(6px);
+  }
+  .dark .scrim { background-color: rgb(0 0 0 / 0.58); }
+  /* Tooltips are small and land on anything, so they are opaque by design. */
+  .tooltip {
+    @apply px-2 py-1 text-xs font-medium bg-ink text-canvas;
+    border-radius: 10px;
+    box-shadow: 0 12px 30px -12px var(--glass-shadow-ambient);
+  }
+  .empty-state {
+    @apply px-4 py-6 text-sm text-center text-muted;
+    border: 1px dashed var(--glass-border-strong);
+    border-radius: var(--radius-card);
+  }
+}
+
+/* ===========================================================================
+   Degradation
+   =========================================================================== */
+
+/* No backdrop-filter (older Firefox, some embedded webviews): 38% white over a
+   gradient is unreadable without the blur behind it, so go opaque instead. */
+@supports not ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
+  .panel,
+  .card,
+  .card-link,
+  .panel-interactive,
+  .surface-overlay {
+    background-color: var(--glass-surface-solid);
+  }
+  .btn-ghost,
+  .field,
+  .field-area {
+    background-color: var(--glass-elevated-solid);
+  }
+}
+
+/* Phones: blur is the expensive part of this design, and a fixed background
+   forces a repaint on every scroll frame. Halve one, drop the other. */
+@media (max-width: 640px) {
+  :root { --glass-blur: 12px; }
+  body { background-attachment: scroll; }
+}
+
+/* Coarse pointers get no hover lift — it only ever fires as a stuck state. */
+@media (hover: none) {
+  .card-link:hover,
+  .panel-interactive:hover { transform: none; }
 }
 
 @media (prefers-reduced-motion: reduce) {
   * { transition-duration: 0.01ms !important; }
+  .card-link:hover,
+  .panel-interactive:hover,
+  .btn:not(:disabled):active { transform: none; }
+}
+
+/* Forced colours: drop the glass rather than fight the forced palette. */
+@media (forced-colors: active) {
+  .panel,
+  .card,
+  .card-link,
+  .panel-interactive,
+  .surface-overlay {
+    -webkit-backdrop-filter: none;
+    backdrop-filter: none;
+    border: 1px solid CanvasText;
+  }
 }

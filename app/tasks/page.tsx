@@ -95,7 +95,7 @@ export default async function TasksPage() {
       </nav>
 
       <div className="max-w-2xl mx-auto px-6 py-6 space-y-6">
-        <h1 className="text-2xl font-bold tracking-tight text-slate-900">Open tasks</h1>
+        <h1 className="text-2xl font-bold tracking-tight text-ink">Open tasks</h1>
 
         <ul className="space-y-4">
           {(tasks as Task[] | null)?.map((t) => {
@@ -110,12 +110,12 @@ export default async function TasksPage() {
             return (
               <li key={t.id} className="card p-6">
                 <div className="flex items-center justify-between gap-3">
-                  <h2 className="font-semibold text-slate-900">{t.title}</h2>
+                  <h2 className="font-semibold text-ink">{t.title}</h2>
                   <span className="badge badge-accent shrink-0">{t.jobs.title}</span>
                 </div>
-                <p className="text-sm text-slate-600 whitespace-pre-wrap mt-1">{t.brief_md}</p>
+                <p className="text-sm text-muted whitespace-pre-wrap mt-1">{t.brief_md}</p>
                 {t.deadline_at && (
-                  <p className="text-xs text-slate-400 mt-2 inline-flex items-center gap-1">
+                  <p className="text-xs text-subtle mt-2 inline-flex items-center gap-1">
                     <FontAwesomeIcon icon={faClock} className="w-3 h-3" /> due {new Date(t.deadline_at).toLocaleDateString()}
                   </p>
                 )}
@@ -144,9 +144,9 @@ export default async function TasksPage() {
                     {mine.map((m) => {
                       const fb = feedbackBySub.get(m.id);
                       return (
-                        <li key={m.id} className="rounded-lg bg-slate-50 border border-slate-200 px-3 py-2">
+                        <li key={m.id} className="rounded-lg bg-elevated border border-hairline px-3 py-2">
                           <div className="flex items-center justify-between gap-2">
-                            <span className="text-xs text-slate-500">
+                            <span className="text-xs text-muted">
                               {new Date(m.submitted_at).toLocaleString()}
                             </span>
                             <span className="badge badge-muted">{m.status}</span>
@@ -154,18 +154,18 @@ export default async function TasksPage() {
                           {fb ? (
                             <div className="mt-2">
                               <div className="flex items-baseline gap-1.5">
-                                <span className="text-xl font-extrabold text-slate-900 tabular-nums">
+                                <span className="text-xl font-extrabold text-ink tabular-nums">
                                   {fb.score ?? '—'}
                                 </span>
-                                <span className="text-xs text-slate-400">/ 100</span>
+                                <span className="text-xs text-subtle">/ 100</span>
                               </div>
-                              {fb.rationale && <p className="text-xs text-slate-600 mt-1">{fb.rationale}</p>}
+                              {fb.rationale && <p className="text-xs text-muted mt-1">{fb.rationale}</p>}
                               {fb.dimensions && fb.dimensions.length > 0 && (
                                 <ul className="mt-2 space-y-1">
                                   {fb.dimensions.map((d) => (
-                                    <li key={d.name} className="text-xs text-slate-600 flex justify-between gap-3">
+                                    <li key={d.name} className="text-xs text-muted flex justify-between gap-3">
                                       <span className="truncate">{d.name}</span>
-                                      <span className="tabular-nums font-medium text-slate-800">{d.score}</span>
+                                      <span className="tabular-nums font-medium text-ink">{d.score}</span>
                                     </li>
                                   ))}
                                 </ul>
@@ -173,7 +173,7 @@ export default async function TasksPage() {
                             </div>
                           ) : (
                             m.status === 'evaluated' && (
-                              <p className="text-xs text-slate-400 mt-1">
+                              <p className="text-xs text-subtle mt-1">
                                 Evaluated — this employer doesn’t share feedback.
                               </p>
                             )
@@ -185,15 +185,15 @@ export default async function TasksPage() {
                 )}
 
                 {!userId ? (
-                  <div className="mt-3 border-t border-slate-100 pt-3">
+                  <div className="mt-3 border-t border-hairline pt-3">
                     <Link href="/login" className="btn btn-primary btn-sm">
                       <FontAwesomeIcon icon={faPaperPlane} className="w-3 h-3" /> Sign in to submit
                     </Link>
                   </div>
                 ) : denial ? (
-                  <div className="mt-3 border-t border-slate-100 pt-3">
-                    <p className="text-sm text-slate-500 flex items-start gap-2">
-                      <FontAwesomeIcon icon={faLock} className="w-3.5 h-3.5 mt-0.5 shrink-0 text-slate-400" />
+                  <div className="mt-3 border-t border-hairline pt-3">
+                    <p className="text-sm text-muted flex items-start gap-2">
+                      <FontAwesomeIcon icon={faLock} className="w-3.5 h-3.5 mt-0.5 shrink-0 text-subtle" />
                       {denial.message}
                     </p>
                   </div>
@@ -203,7 +203,7 @@ export default async function TasksPage() {
               </li>
             );
           })}
-          {tasks?.length === 0 && <li className="text-sm text-slate-500">No open tasks right now.</li>}
+          {tasks?.length === 0 && <li className="text-sm text-muted">No open tasks right now.</li>}
         </ul>
       </div>
     </main>

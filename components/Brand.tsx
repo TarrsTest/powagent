@@ -6,10 +6,10 @@ import { faBolt } from '@fortawesome/free-solid-svg-icons';
 export default function Brand({ href = '/' }: { href?: string }) {
   return (
     <Link href={href} className="inline-flex items-center gap-2 group">
-      <span className="inline-flex items-center justify-center w-8 h-8 rounded-lg bg-slate-900 text-sky-400 shadow-sm">
+      <span className="inline-flex items-center justify-center w-8 h-8 rounded-lg bg-elevated text-accent shadow-sm">
         <FontAwesomeIcon icon={faBolt} className="w-3.5 h-3.5" />
       </span>
-      <span className="text-[15px] font-extrabold tracking-tight text-slate-900">
+      <span className="text-[15px] font-extrabold tracking-tight text-ink">
         powagent
       </span>
     </Link>

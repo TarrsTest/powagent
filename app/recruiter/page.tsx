@@ -151,8 +151,8 @@ export default async function RecruiterPage() {
 
       <div className="max-w-3xl mx-auto px-6 py-6 space-y-6">
         <div>
-          <h1 className="text-2xl font-bold tracking-tight text-slate-900">Recruiter dashboard</h1>
-          <p className="text-sm text-slate-500 mt-1">{org?.name ?? 'Your organization'}</p>
+          <h1 className="text-2xl font-bold tracking-tight text-ink">Recruiter dashboard</h1>
+          <p className="text-sm text-muted mt-1">{org?.name ?? 'Your organization'}</p>
         </div>
 
         {/* Overview — the whole org at a glance, so nobody has to click through
@@ -160,12 +160,12 @@ export default async function RecruiterPage() {
         <section className="grid grid-cols-2 sm:grid-cols-5 gap-3">
           {stats.map((s) => (
             <div key={s.label} className="card p-4">
-              <FontAwesomeIcon icon={s.icon} className="w-3.5 h-3.5 text-slate-300" />
-              <p className="text-2xl font-extrabold text-slate-900 tabular-nums mt-2 leading-none">
+              <FontAwesomeIcon icon={s.icon} className="w-3.5 h-3.5 text-subtle" />
+              <p className="text-2xl font-extrabold text-ink tabular-nums mt-2 leading-none">
                 {s.value}
               </p>
-              <p className="text-xs font-semibold text-slate-700 mt-1.5">{s.label}</p>
-              <p className="text-[11px] text-slate-400 leading-tight">{s.sub}</p>
+              <p className="text-xs font-semibold text-ink-soft mt-1.5">{s.label}</p>
+              <p className="text-[11px] text-subtle leading-tight">{s.sub}</p>
             </div>
           ))}
         </section>
@@ -173,12 +173,12 @@ export default async function RecruiterPage() {
         <div className="grid gap-4 sm:grid-cols-2">
           {/* Top candidates — same ranking rules as the per-task leaderboard */}
           <section className="card p-6">
-            <h2 className="font-semibold text-slate-900 mb-1 flex items-center gap-2">
-              <FontAwesomeIcon icon={faRankingStar} className="w-4 h-4 text-sky-700" /> Top candidates
+            <h2 className="font-semibold text-ink mb-1 flex items-center gap-2">
+              <FontAwesomeIcon icon={faRankingStar} className="w-4 h-4 text-accent" /> Top candidates
             </h2>
-            <p className="text-xs text-slate-500 mb-4">Best score per candidate, across all your tasks.</p>
+            <p className="text-xs text-muted mb-4">Best score per candidate, across all your tasks.</p>
             {ranked.length === 0 ? (
-              <p className="text-sm text-slate-500">
+              <p className="text-sm text-muted">
                 {submissions.length === 0
                   ? 'No submissions yet — candidates appear here once they submit.'
                   : 'Nothing scored yet. Open a task and evaluate a submission against a rubric.'}
@@ -187,19 +187,19 @@ export default async function RecruiterPage() {
               <ul className="space-y-3">
                 {ranked.map((c, i) => (
                   <li key={c.candidateId} className="flex items-start gap-3">
-                    <span className="shrink-0 w-4 text-center text-xs font-mono text-slate-400 mt-1">
+                    <span className="shrink-0 w-4 text-center text-xs font-mono text-subtle mt-1">
                       {i + 1}
                     </span>
                     <div className="min-w-0 flex-1">
                       <div className="flex items-center justify-between gap-2">
-                        <span className="text-sm font-medium text-slate-900 truncate">
+                        <span className="text-sm font-medium text-ink truncate">
                           {c.email ?? `candidate ${c.candidateId.slice(0, 8)}…`}
                         </span>
-                        <span className="shrink-0 text-sm font-bold tabular-nums text-slate-900">
+                        <span className="shrink-0 text-sm font-bold tabular-nums text-ink">
                           {c.score}
                         </span>
                       </div>
-                      <div className="mt-1 h-1 rounded-full bg-slate-100 overflow-hidden">
+                      <div className="mt-1 h-1 rounded-full bg-elevated overflow-hidden">
                         <div
                           className={`h-full rounded-full ${scoreTone(c.score)}`}
                           style={{ width: `${c.score}%` }}
@@ -208,7 +208,7 @@ export default async function RecruiterPage() {
                       <div className="flex items-center gap-1.5 mt-1 flex-wrap">
                         <Link
                           href={`/recruiter/tasks/${c.taskId}/leaderboard`}
-                          className="text-[11px] text-slate-500 hover:text-sky-700 truncate"
+                          className="text-[11px] text-muted hover:text-accent truncate"
                         >
                           {c.taskTitle}
                         </Link>
@@ -228,12 +228,12 @@ export default async function RecruiterPage() {
 
           {/* Closing soon */}
           <section className="card p-6">
-            <h2 className="font-semibold text-slate-900 mb-1 flex items-center gap-2">
-              <FontAwesomeIcon icon={faClock} className="w-4 h-4 text-sky-700" /> Closing soon
+            <h2 className="font-semibold text-ink mb-1 flex items-center gap-2">
+              <FontAwesomeIcon icon={faClock} className="w-4 h-4 text-accent" /> Closing soon
             </h2>
-            <p className="text-xs text-slate-500 mb-4">Tasks that stop accepting submissions next.</p>
+            <p className="text-xs text-muted mb-4">Tasks that stop accepting submissions next.</p>
             {closingSoon.length === 0 ? (
-              <p className="text-sm text-slate-500">
+              <p className="text-sm text-muted">
                 {tasks.length === 0
                   ? 'No tasks yet.'
                   : pastDeadline > 0
@@ -246,7 +246,7 @@ export default async function RecruiterPage() {
                   <li key={task.id} className="flex items-center justify-between gap-3">
                     <Link
                       href={`/recruiter/tasks/${task.id}`}
-                      className="text-sm text-slate-700 hover:text-sky-700 truncate"
+                      className="text-sm text-ink-soft hover:text-accent truncate"
                     >
                       {task.title}
                     </Link>
@@ -264,8 +264,8 @@ export default async function RecruiterPage() {
 
         {/* Create job */}
         <section className="card p-6">
-          <h2 className="font-semibold text-slate-900 mb-3 flex items-center gap-2">
-            <FontAwesomeIcon icon={faBriefcase} className="w-4 h-4 text-sky-700" /> New job
+          <h2 className="font-semibold text-ink mb-3 flex items-center gap-2">
+            <FontAwesomeIcon icon={faBriefcase} className="w-4 h-4 text-accent" /> New job
           </h2>
           <form action={createJob} className="flex gap-2">
             <input name="title" required placeholder="Senior Backend Engineer" className="field flex-1" />
@@ -275,8 +275,8 @@ export default async function RecruiterPage() {
             </select>
             <button className="btn btn-primary">Create</button>
           </form>
-          <p className="text-xs text-slate-400 mt-2">
-            Candidates only see tasks under an <span className="font-medium text-slate-500">open</span> job.
+          <p className="text-xs text-subtle mt-2">
+            Candidates only see tasks under an <span className="font-medium text-muted">open</span> job.
           </p>
         </section>
 
@@ -285,7 +285,7 @@ export default async function RecruiterPage() {
           {jobs.map((job) => (
             <div key={job.id} className="card p-6">
               <div className="flex items-center justify-between mb-3">
-                <h3 className="font-semibold text-slate-900 flex items-center gap-2">
+                <h3 className="font-semibold text-ink flex items-center gap-2">
                   {job.title} <span className={statusBadge(job.status)}>{job.status}</span>
                 </h3>
                 <form action={setJobStatus} className="flex items-center gap-1">
@@ -304,11 +304,11 @@ export default async function RecruiterPage() {
                   <li key={t.id} className="flex items-center gap-2 flex-wrap">
                     <Link
                       href={`/recruiter/tasks/${t.id}`}
-                      className="text-sm text-slate-700 hover:text-sky-700 inline-flex items-center gap-1.5"
+                      className="text-sm text-ink-soft hover:text-accent inline-flex items-center gap-1.5"
                     >
-                      <FontAwesomeIcon icon={faListCheck} className="w-3 h-3 text-slate-400" />
+                      <FontAwesomeIcon icon={faListCheck} className="w-3 h-3 text-subtle" />
                       {t.title}
-                      <FontAwesomeIcon icon={faArrowRight} className="w-3 h-3 text-slate-300" />
+                      <FontAwesomeIcon icon={faArrowRight} className="w-3 h-3 text-subtle" />
                     </Link>
                     {(acceptCount.get(t.id) ?? 0) > 0 && (
                       <span className="badge badge-muted" title="candidates who accepted this task">
@@ -330,12 +330,12 @@ export default async function RecruiterPage() {
                   </li>
                 ))}
                 {(!job.tasks || job.tasks.length === 0) && (
-                  <li className="text-xs text-slate-400">No tasks yet.</li>
+                  <li className="text-xs text-subtle">No tasks yet.</li>
                 )}
               </ul>
 
-              <details className="border-t border-slate-100 pt-3">
-                <summary className="text-sm font-semibold cursor-pointer text-sky-700 select-none">
+              <details className="border-t border-hairline pt-3">
+                <summary className="text-sm font-semibold cursor-pointer text-accent select-none">
                   Add a task
                 </summary>
                 <form action={addTask} className="space-y-2 mt-3">
@@ -349,7 +349,7 @@ export default async function RecruiterPage() {
                     className="field-area"
                   />
                   <div className="flex items-center gap-2">
-                    <label className="text-xs text-slate-500 shrink-0">Candidate feedback</label>
+                    <label className="text-xs text-muted shrink-0">Candidate feedback</label>
                     <select name="feedback_visibility" defaultValue="none" className="field w-auto h-8 text-xs py-0">
                       <option value="none">none</option>
                       <option value="score">score only</option>
@@ -363,8 +363,8 @@ export default async function RecruiterPage() {
           ))}
           {jobs.length === 0 && (
             <div className="card p-6 text-center">
-              <p className="text-sm text-slate-600">No jobs yet.</p>
-              <p className="text-xs text-slate-400 mt-1">
+              <p className="text-sm text-muted">No jobs yet.</p>
+              <p className="text-xs text-subtle mt-1">
                 Create one above, add a task describing real work, then write a rubric to score it.
               </p>
             </div>
@@ -373,20 +373,20 @@ export default async function RecruiterPage() {
 
         {/* Rubrics */}
         <section className="card p-6">
-          <h2 className="font-semibold text-slate-900 mb-1 flex items-center gap-2">
-            <FontAwesomeIcon icon={faClipboardCheck} className="w-4 h-4 text-sky-700" /> Rubrics
+          <h2 className="font-semibold text-ink mb-1 flex items-center gap-2">
+            <FontAwesomeIcon icon={faClipboardCheck} className="w-4 h-4 text-accent" /> Rubrics
           </h2>
-          <p className="text-xs text-slate-500 mb-3">
+          <p className="text-xs text-muted mb-3">
             Your scoring logic. A submission can only be evaluated once a rubric exists.
           </p>
           <ul className="space-y-1 mb-4">
             {(rubrics as Rubric[] | null)?.map((r) => (
-              <li key={r.id} className="text-sm text-slate-700 font-medium">{r.name}</li>
+              <li key={r.id} className="text-sm text-ink-soft font-medium">{r.name}</li>
             ))}
-            {rubrics?.length === 0 && <li className="text-xs text-slate-400">No rubrics yet.</li>}
+            {rubrics?.length === 0 && <li className="text-xs text-subtle">No rubrics yet.</li>}
           </ul>
           <details>
-            <summary className="text-sm font-semibold cursor-pointer text-sky-700 select-none">
+            <summary className="text-sm font-semibold cursor-pointer text-accent select-none">
               New rubric
             </summary>
             <form action={createRubric} className="space-y-2 mt-3">

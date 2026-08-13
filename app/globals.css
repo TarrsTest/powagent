@@ -1,32 +1,55 @@
 @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap');
 @import "tailwindcss";
 
-/* powagent design system — "Soft UI Evolution": professional navy/slate ink,
-   sky-blue CTA, soft shadows, Plus Jakarta Sans. */
+/* powagent design system — "Soft UI Evolution", dark theme: deep navy canvas,
+   sky-blue accent, soft elevation, Plus Jakarta Sans.
+
+   Colours are addressed by ROLE, not by shade. Pages use `text-ink`,
+   `bg-surface`, `border-hairline` … rather than raw `text-slate-900` /
+   `bg-white`, so the palette lives here and nowhere else — retheming (or
+   adding a light mode later) means editing this block, not 13 page files. */
 @theme {
-  --color-primary: #0369a1;       /* sky-700 — accent / CTA */
-  --color-ink: #0f172a;           /* slate-900 — primary text */
+  /* Surfaces — canvas is the page, surface is a card, elevated is a fill. */
+  --color-canvas: #0a1020;
+  --color-surface: #121b2e;
+  --color-elevated: #1b2540;
+  --color-hairline: #253048;
+
+  /* Text — ink is primary, then progressively quieter. */
+  --color-ink: #e9eff8;
+  --color-ink-soft: #c3cfe0;
+  --color-muted: #93a3ba;
+  --color-subtle: #6b7c96;
+
+  /* Accent — text/icon accent plus its tinted surface and border. */
+  --color-primary: #38bdf8;
+  --color-accent: #5cb6f7;
+  --color-accent-soft: #10243a;
+  --color-accent-line: #234c6e;
+
   --font-sans: 'Plus Jakarta Sans', ui-sans-serif, system-ui, -apple-system,
     'Segoe UI', Roboto, sans-serif;
 }
 
 html {
   font-family: var(--font-sans);
+  /* Native controls, scrollbars and form widgets follow the theme. */
+  color-scheme: dark;
 }
 
 body {
-  background-color: #f8fafc;      /* slate-50 */
-  color: #0f172a;                 /* slate-900 */
+  background-color: var(--color-canvas);
+  color: var(--color-ink);
 }
 
 @layer components {
   /* Surfaces */
   .card {
-    @apply bg-white border border-slate-200 rounded-2xl shadow-sm;
+    @apply bg-surface border border-hairline rounded-2xl shadow-sm;
   }
   .card-link {
-    @apply bg-white border border-slate-200 rounded-2xl shadow-sm transition
-           hover:shadow-md hover:border-slate-300;
+    @apply bg-surface border border-hairline rounded-2xl shadow-sm transition
+           hover:bg-elevated hover:border-accent-line;
   }
 
   /* Buttons */
@@ -34,36 +57,37 @@ body {
     @apply inline-flex items-center justify-center gap-2 h-10 px-4 rounded-lg
            text-sm font-semibold transition-colors cursor-pointer
            focus-visible:outline-none focus-visible:ring-2
-           focus-visible:ring-sky-500/40 disabled:opacity-50
+           focus-visible:ring-sky-400/50 disabled:opacity-50
            disabled:cursor-not-allowed;
   }
-  .btn-primary { @apply bg-sky-600 text-white hover:bg-sky-700; }
-  .btn-dark    { @apply bg-slate-900 text-white hover:bg-slate-800; }
-  .btn-ghost   { @apply border border-slate-200 text-slate-700 hover:bg-slate-50; }
+  .btn-primary { @apply bg-sky-600 text-white hover:bg-sky-500; }
+  /* Highest-emphasis button: on a dark canvas that means near-white, not near-black. */
+  .btn-dark    { @apply bg-ink text-canvas hover:bg-white; }
+  .btn-ghost   { @apply border border-hairline text-ink-soft hover:bg-elevated; }
   .btn-sm      { @apply h-9 px-3 text-xs; }
 
-  /* Form controls */
+  /* Form controls — inset, so darker than the card they sit on. */
   .field {
-    @apply w-full h-10 px-3 rounded-lg border border-slate-300 bg-white text-sm
-           text-slate-900 placeholder:text-slate-400 transition
-           focus:outline-none focus:border-sky-500 focus:ring-2 focus:ring-sky-500/20;
+    @apply w-full h-10 px-3 rounded-lg border border-hairline bg-canvas text-sm
+           text-ink placeholder:text-subtle transition
+           focus:outline-none focus:border-sky-500 focus:ring-2 focus:ring-sky-500/25;
   }
   .field-area {
-    @apply w-full px-3 py-2 rounded-lg border border-slate-300 bg-white text-sm
-           text-slate-900 placeholder:text-slate-400 transition
-           focus:outline-none focus:border-sky-500 focus:ring-2 focus:ring-sky-500/20;
+    @apply w-full px-3 py-2 rounded-lg border border-hairline bg-canvas text-sm
+           text-ink placeholder:text-subtle transition
+           focus:outline-none focus:border-sky-500 focus:ring-2 focus:ring-sky-500/25;
   }
-  .label { @apply block text-sm font-medium text-slate-700; }
+  .label { @apply block text-sm font-medium text-ink-soft; }
 
-  /* Badges */
+  /* Badges — tinted fills rather than pale washes, which vanish on dark. */
   .badge {
     @apply inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-xs font-medium;
   }
-  .badge-muted   { @apply bg-slate-100 text-slate-600; }
-  .badge-accent  { @apply bg-sky-50 text-sky-700; }
-  .badge-success { @apply bg-emerald-50 text-emerald-700; }
-  .badge-warn    { @apply bg-amber-50 text-amber-700; }
-  .badge-danger  { @apply bg-red-50 text-red-700; }
+  .badge-muted   { @apply bg-elevated text-muted; }
+  .badge-accent  { @apply bg-accent-soft text-accent; }
+  .badge-success { @apply bg-emerald-500/15 text-emerald-300; }
+  .badge-warn    { @apply bg-amber-500/15 text-amber-300; }
+  .badge-danger  { @apply bg-red-500/15 text-red-300; }
 }
 
 @media (prefers-reduced-motion: reduce) {

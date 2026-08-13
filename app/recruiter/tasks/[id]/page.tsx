@@ -79,11 +79,11 @@ export default async function TaskSubmissionsPage(props: { params: Promise<{ id:
 
       <div className="max-w-3xl mx-auto px-6 py-6 space-y-6">
         <div>
-          <Link href="/recruiter" className="text-sm text-slate-500 hover:text-slate-800 inline-flex items-center gap-1.5">
+          <Link href="/recruiter" className="text-sm text-muted hover:text-ink inline-flex items-center gap-1.5">
             <FontAwesomeIcon icon={faArrowLeft} className="w-3 h-3" /> Recruiter dashboard
           </Link>
-          <h1 className="text-2xl font-bold tracking-tight text-slate-900 mt-2">{task.title}</h1>
-          <p className="text-sm text-slate-600 whitespace-pre-wrap mt-1">{task.brief_md}</p>
+          <h1 className="text-2xl font-bold tracking-tight text-ink mt-2">{task.title}</h1>
+          <p className="text-sm text-muted whitespace-pre-wrap mt-1">{task.brief_md}</p>
           <div className="flex items-center flex-wrap gap-3 mt-3">
             <Link href={`/recruiter/tasks/${taskId}/leaderboard`} className="btn btn-dark btn-sm">
               <FontAwesomeIcon icon={faRankingStar} className="w-3 h-3" /> Leaderboard
@@ -94,7 +94,7 @@ export default async function TaskSubmissionsPage(props: { params: Promise<{ id:
             {/* A2 — how much of the evaluation candidates may see */}
             <form action={setFeedbackVisibility} className="flex items-center gap-1.5">
               <input type="hidden" name="task_id" value={taskId} />
-              <label className="text-xs text-slate-500">Candidate feedback</label>
+              <label className="text-xs text-muted">Candidate feedback</label>
               <select
                 name="feedback_visibility"
                 defaultValue={task.feedback_visibility}
@@ -110,7 +110,7 @@ export default async function TaskSubmissionsPage(props: { params: Promise<{ id:
         </div>
 
         {rubricList.length === 0 && (
-          <p className="text-sm text-amber-700 rounded-lg border border-amber-300 bg-amber-50 px-3 py-2">
+          <p className="text-sm text-amber-300 rounded-lg border border-amber-500/40 bg-amber-500/10 px-3 py-2">
             Create a rubric on the dashboard before you can evaluate submissions.
           </p>
         )}
@@ -128,18 +128,18 @@ export default async function TaskSubmissionsPage(props: { params: Promise<{ id:
               <li key={s.id} className="card p-6">
                 <div className="flex items-center justify-between gap-3 mb-3">
                   {s.candidate?.email ? (
-                    <a href={`mailto:${s.candidate.email}`} className="text-sm font-medium text-sky-700 hover:underline truncate">
+                    <a href={`mailto:${s.candidate.email}`} className="text-sm font-medium text-accent hover:underline truncate">
                       {s.candidate.email}
                     </a>
                   ) : (
-                    <span className="text-xs font-mono text-slate-400">candidate {s.candidate_id.slice(0, 8)}…</span>
+                    <span className="text-xs font-mono text-subtle">candidate {s.candidate_id.slice(0, 8)}…</span>
                   )}
                   <span className="badge badge-muted shrink-0">{s.status}</span>
                 </div>
 
                 <details className="mb-2 group">
-                  <summary className="text-sm font-semibold text-slate-800 cursor-pointer select-none">Result</summary>
-                  <pre className="mt-2 text-xs whitespace-pre-wrap bg-slate-50 border border-slate-200 rounded-lg p-3 text-slate-700">{s.result_md}</pre>
+                  <summary className="text-sm font-semibold text-ink cursor-pointer select-none">Result</summary>
+                  <pre className="mt-2 text-xs whitespace-pre-wrap bg-elevated border border-hairline rounded-lg p-3 text-ink-soft">{s.result_md}</pre>
                 </details>
 
                 {/* §5 metric 4 — opening this is the signal that the process,
@@ -148,20 +148,20 @@ export default async function TaskSubmissionsPage(props: { params: Promise<{ id:
                   className="mb-3 group"
                   onFirstOpen={recordTranscriptRead.bind(null, s.id)}
                 >
-                  <summary className="text-sm font-semibold text-slate-800 cursor-pointer select-none">
+                  <summary className="text-sm font-semibold text-ink cursor-pointer select-none">
                     Agent transcript{' '}
-                    <span className="text-xs font-normal text-slate-400">
+                    <span className="text-xs font-normal text-subtle">
                       ({artifact?.source_type ?? 'none'} · {artifact?.fetch_status ?? 'n/a'})
                     </span>
                   </summary>
-                  <pre className="mt-2 text-xs whitespace-pre-wrap bg-slate-50 border border-slate-200 rounded-lg p-3 text-slate-700">
+                  <pre className="mt-2 text-xs whitespace-pre-wrap bg-elevated border border-hairline rounded-lg p-3 text-ink-soft">
                     {artifact?.raw_md ?? '(no transcript / fetch failed)'}
                   </pre>
                 </TranscriptDisclosure>
 
                 {/* Trigger evaluation */}
                 {rubricList.length > 0 && (
-                  <form action={runEvaluate} className="flex items-center gap-2 border-t border-slate-100 pt-3">
+                  <form action={runEvaluate} className="flex items-center gap-2 border-t border-hairline pt-3">
                     <input type="hidden" name="submission_id" value={s.id} />
                     <input type="hidden" name="task_id" value={taskId} />
                     <select name="rubric_id" required className="field w-auto h-9 flex-1">
@@ -179,22 +179,22 @@ export default async function TaskSubmissionsPage(props: { params: Promise<{ id:
                 {evals.length > 0 && (
                   <ul className="mt-3 space-y-2">
                     {evals.map((e) => (
-                      <li key={e.id} className="rounded-lg bg-slate-50 border border-slate-200 p-3">
+                      <li key={e.id} className="rounded-lg bg-elevated border border-hairline p-3">
                         {e.status === 'done' && e.output_json ? (
                           <>
                             <div className="flex items-center gap-2 flex-wrap">
-                              <span className="text-2xl font-extrabold text-slate-900 tabular-nums">{e.output_json.score ?? '—'}</span>
-                              <span className="text-xs text-slate-400">/ 100</span>
+                              <span className="text-2xl font-extrabold text-ink tabular-nums">{e.output_json.score ?? '—'}</span>
+                              <span className="text-xs text-subtle">/ 100</span>
                               {e.output_json.flags?.map((f) => (
                                 <span key={f} className="badge badge-warn">
                                   <FontAwesomeIcon icon={faFlag} className="w-2.5 h-2.5" />{f}
                                 </span>
                               ))}
                             </div>
-                            <p className="text-xs text-slate-600 mt-1">{e.output_json.rationale}</p>
+                            <p className="text-xs text-muted mt-1">{e.output_json.rationale}</p>
                           </>
                         ) : (
-                          <span className="text-xs text-red-600">{e.status}: {e.error ?? '…'}</span>
+                          <span className="text-xs text-red-400">{e.status}: {e.error ?? '…'}</span>
                         )}
                       </li>
                     ))}
@@ -203,7 +203,7 @@ export default async function TaskSubmissionsPage(props: { params: Promise<{ id:
               </li>
             );
           })}
-          {submissions?.length === 0 && <li className="text-sm text-slate-500">No submissions yet.</li>}
+          {submissions?.length === 0 && <li className="text-sm text-muted">No submissions yet.</li>}
         </ul>
       </div>
     </main>

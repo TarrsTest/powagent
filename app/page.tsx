@@ -50,11 +50,11 @@ export default async function Home() {
 
       <section className="max-w-3xl mx-auto text-center px-6 pt-20 pb-16">
         <span className="badge badge-accent mb-5">AI-native hiring</span>
-        <h1 className="text-4xl sm:text-5xl font-extrabold tracking-tight text-slate-900 leading-[1.1]">
+        <h1 className="text-4xl sm:text-5xl font-extrabold tracking-tight text-ink leading-[1.1]">
           Hire on how people
           <br className="hidden sm:block" /> actually work.
         </h1>
-        <p className="text-lg text-slate-600 mt-5 max-w-xl mx-auto">
+        <p className="text-lg text-muted mt-5 max-w-xl mx-auto">
           powagent evaluates real work samples — the candidate’s output <em>and</em> their agent
           conversation — against your own rubric. Judge the process, not the paperwork.
         </p>
@@ -73,29 +73,29 @@ export default async function Home() {
         <div className="card p-6 sm:p-8">
           <div className="flex items-center justify-between mb-5">
             <div>
-              <p className="text-xs font-mono text-slate-400">TASK · RANKED</p>
-              <h2 className="font-semibold text-slate-900">Design a webhook idempotency layer</h2>
+              <p className="text-xs font-mono text-subtle">TASK · RANKED</p>
+              <h2 className="font-semibold text-ink">Design a webhook idempotency layer</h2>
             </div>
             <span className="badge badge-accent">3 submissions</span>
           </div>
           <ul className="space-y-3">
             {previewRanks.map((c, i) => (
               <li key={c.name} className="flex items-center gap-4">
-                <span className="shrink-0 w-6 text-center text-sm font-mono text-slate-400">{i + 1}</span>
+                <span className="shrink-0 w-6 text-center text-sm font-mono text-subtle">{i + 1}</span>
                 <div className="min-w-0 flex-1">
                   <div className="flex items-center justify-between gap-3">
-                    <span className="font-medium text-slate-900 truncate">{c.name}</span>
-                    <span className="shrink-0 text-sm font-bold tabular-nums text-slate-900">{c.score}</span>
+                    <span className="font-medium text-ink truncate">{c.name}</span>
+                    <span className="shrink-0 text-sm font-bold tabular-nums text-ink">{c.score}</span>
                   </div>
-                  <div className="mt-1.5 h-1.5 rounded-full bg-slate-100 overflow-hidden">
+                  <div className="mt-1.5 h-1.5 rounded-full bg-elevated overflow-hidden">
                     <div className={`h-full rounded-full ${barTone[c.tone]}`} style={{ width: `${c.score}%` }} />
                   </div>
-                  <p className="text-xs text-slate-500 mt-1.5">{c.note}</p>
+                  <p className="text-xs text-muted mt-1.5">{c.note}</p>
                 </div>
               </li>
             ))}
           </ul>
-          <p className="text-xs text-slate-400 mt-5 text-center">Illustrative — your rubric, your dimensions.</p>
+          <p className="text-xs text-subtle mt-5 text-center">Illustrative — your rubric, your dimensions.</p>
         </div>
       </section>
 
@@ -104,13 +104,13 @@ export default async function Home() {
           {steps.map((s, i) => (
             <div key={s.title} className="card p-6">
               <div className="flex items-center gap-3 mb-3">
-                <span className="inline-flex items-center justify-center w-9 h-9 rounded-lg bg-sky-50 text-sky-700">
+                <span className="inline-flex items-center justify-center w-9 h-9 rounded-lg bg-accent-soft text-accent">
                   <FontAwesomeIcon icon={s.icon} className="w-4 h-4" />
                 </span>
-                <span className="text-xs font-mono text-slate-400">0{i + 1}</span>
+                <span className="text-xs font-mono text-subtle">0{i + 1}</span>
               </div>
-              <h3 className="font-semibold text-slate-900">{s.title}</h3>
-              <p className="text-sm text-slate-600 mt-1">{s.body}</p>
+              <h3 className="font-semibold text-ink">{s.title}</h3>
+              <p className="text-sm text-muted mt-1">{s.body}</p>
             </div>
           ))}
         </div>
@@ -119,29 +119,29 @@ export default async function Home() {
       <section className="max-w-5xl mx-auto px-6 pb-24">
         <div className="text-center mb-10">
           <span className="badge badge-muted mb-3">Why teams switch</span>
-          <h2 className="text-2xl sm:text-3xl font-extrabold tracking-tight text-slate-900">
+          <h2 className="text-2xl sm:text-3xl font-extrabold tracking-tight text-ink">
             Hiring signal you can trust
           </h2>
         </div>
         <div className="grid gap-4 sm:grid-cols-2">
           {reasons.map((r) => (
             <div key={r.title} className="card p-6 flex items-start gap-4">
-              <span className="shrink-0 inline-flex items-center justify-center w-10 h-10 rounded-xl bg-slate-900 text-sky-400">
+              <span className="shrink-0 inline-flex items-center justify-center w-10 h-10 rounded-xl bg-elevated text-accent">
                 <FontAwesomeIcon icon={r.icon} className="w-4 h-4" />
               </span>
               <div>
-                <h3 className="font-semibold text-slate-900">{r.title}</h3>
-                <p className="text-sm text-slate-600 mt-1">{r.body}</p>
+                <h3 className="font-semibold text-ink">{r.title}</h3>
+                <p className="text-sm text-muted mt-1">{r.body}</p>
               </div>
             </div>
           ))}
         </div>
       </section>
 
-      <footer className="border-t border-slate-200">
+      <footer className="border-t border-hairline">
         <div className="max-w-5xl mx-auto px-6 py-8 flex flex-col sm:flex-row items-center justify-between gap-4">
           <Brand />
-          <p className="text-sm text-slate-500">
+          <p className="text-sm text-muted">
             © {new Date().getFullYear()} powagent — hire on how people actually work.
           </p>
         </div>

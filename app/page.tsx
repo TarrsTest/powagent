@@ -74,7 +74,10 @@ export default async function Home() {
       </section>
 
       <section className="max-w-3xl mx-auto px-6 pb-20">
-        <div className="card p-6 sm:p-8">
+        {/* Dark mode only: this card is the page's showpiece, so it takes a
+            deep-rose fill instead of the default plum surface. Light mode is
+            untouched — `.card` still supplies its white background there. */}
+        <div className="card p-6 sm:p-8 dark:bg-surface-rose">
           <div className="flex items-center justify-between mb-5">
             <div>
               <p className="text-xs font-mono text-subtle">TASK · RANKED</p>

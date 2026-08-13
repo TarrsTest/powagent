@@ -53,6 +53,16 @@
   --color-accent-soft: #fce7f3;
   --color-accent-line: #f7b6d5;
 
+  /* Deep-rose card fill, consumed ONLY through `dark:bg-surface-rose` (the
+     landing page's ranked-preview card). It is declared here because Tailwind
+     generates utilities from @theme and nowhere else; the light value is never
+     painted, so it mirrors --color-surface to keep light mode byte-identical if
+     the variant were ever dropped.
+     The dark value below is as red-dominant as the text on it allows: `subtle`
+     is the dimmest label on that card and holds 4.58:1 against it, the same
+     ratio it has on the ordinary surface. Going rosier drops it under AA. */
+  --color-surface-rose: #ffffff;
+
   --font-sans: 'Plus Jakarta Sans', ui-sans-serif, system-ui, -apple-system,
     'Segoe UI', Roboto, sans-serif;
 }
@@ -74,6 +84,11 @@ html.dark {
   --color-accent: #f77fbe;
   --color-accent-soft: #3d1128;
   --color-accent-line: #6b2149;
+
+  /* Deep rose — see the note in @theme. Red-dominant where --color-surface is
+     near-neutral plum, so the ranked-preview card reads as rose rather than as
+     another grey card, at the same text contrast. */
+  --color-surface-rose: #2e0c1a;
 }
 
 html {

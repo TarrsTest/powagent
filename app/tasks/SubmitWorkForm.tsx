@@ -38,13 +38,13 @@ export default function SubmitWorkForm({ taskId }: { taskId: string }) {
         />
 
         {state?.error && (
-          <p className="text-sm text-red-400 flex items-start gap-2">
+          <p className="text-sm text-danger flex items-start gap-2">
             <FontAwesomeIcon icon={faTriangleExclamation} className="w-3.5 h-3.5 mt-0.5 shrink-0" />
             {state.error}
           </p>
         )}
         {state?.ok && (
-          <p className="text-sm text-emerald-300 flex items-center gap-2">
+          <p className="text-sm text-success flex items-center gap-2">
             <FontAwesomeIcon icon={faCircleCheck} className="w-3.5 h-3.5" />
             Submitted — it will appear above.
           </p>

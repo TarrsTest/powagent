@@ -61,7 +61,7 @@ export default function LoginPage() {
               className="field h-11"
             />
             {err && (
-              <p className="text-sm text-red-400">{err}</p>
+              <p className="text-sm text-danger">{err}</p>
             )}
             <button
               type="submit"

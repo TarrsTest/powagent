@@ -110,7 +110,7 @@ export default async function TaskSubmissionsPage(props: { params: Promise<{ id:
         </div>
 
         {rubricList.length === 0 && (
-          <p className="text-sm text-amber-300 rounded-lg border border-amber-500/40 bg-amber-500/10 px-3 py-2">
+          <p className="text-sm text-warn rounded-lg border border-warn-line bg-warn-soft px-3 py-2">
             Create a rubric on the dashboard before you can evaluate submissions.
           </p>
         )}
@@ -194,7 +194,7 @@ export default async function TaskSubmissionsPage(props: { params: Promise<{ id:
                             <p className="text-xs text-muted mt-1">{e.output_json.rationale}</p>
                           </>
                         ) : (
-                          <span className="text-xs text-red-400">{e.status}: {e.error ?? '…'}</span>
+                          <span className="text-xs text-danger">{e.status}: {e.error ?? '…'}</span>
                         )}
                       </li>
                     ))}

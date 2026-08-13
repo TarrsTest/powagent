@@ -1,31 +1,153 @@
 @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap');
 @import "tailwindcss";
 
-/* powagent design system — "Soft UI Evolution", dark theme: deep navy canvas,
-   sky-blue accent, soft elevation, Plus Jakarta Sans.
+/* powagent design system — "Liquid Glass": translucent panels floating over a
+   soft gradient canvas, in a rose-pink light theme and a berry-graphite dark
+   theme.
 
-   Colours are addressed by ROLE, not by shade. Pages use `text-ink`,
-   `bg-surface`, `border-hairline` … rather than raw `text-slate-900` /
-   `bg-white`, so the palette lives here and nowhere else — retheming (or
-   adding a light mode later) means editing this block, not 13 page files. */
-@theme {
-  /* Surfaces — canvas is the page, surface is a card, elevated is a fill. */
-  --color-canvas: #0a1020;
-  --color-surface: #121b2e;
-  --color-elevated: #1b2540;
-  --color-hairline: #253048;
+   Two rules govern this file.
 
-  /* Text — ink is primary, then progressively quieter. */
-  --color-ink: #e9eff8;
-  --color-ink-soft: #c3cfe0;
-  --color-muted: #93a3ba;
-  --color-subtle: #6b7c96;
+   1. Colours are addressed by ROLE, not by shade. Pages write `text-ink`,
+      `bg-surface`, `border-hairline` — never `text-slate-900` / `bg-white`. The
+      palette therefore lives here and nowhere else, which is what makes a whole
+      second theme a change to this file rather than to thirteen page files.
 
-  /* Accent — text/icon accent plus its tinted surface and border. */
-  --color-primary: #38bdf8;
-  --color-accent: #5cb6f7;
-  --color-accent-soft: #10243a;
-  --color-accent-line: #234c6e;
+   2. Every role resolves through `light-dark()`, so each token states both its
+      light and its dark value on one line and the two cannot drift apart. Which
+      half applies follows `color-scheme`: left unset it obeys the OS, and the
+      theme toggle narrows it by setting `data-theme` on <html>.
+
+   Accessibility, because glass makes this easy to get wrong: the pink the brief
+   specifies (#F58BB7) is a *material* colour. At roughly 2.3:1 on a light panel
+   it cannot carry text. It is therefore kept for fills, borders and glow, while
+   text and button surfaces use a deepened version of the same hue that clears
+   WCAG AA. `--t-accent` is the text-safe one, `--t-accent-material` the pretty
+   one; reaching for the wrong one is the mistake this split exists to prevent.
+
+   Status colours stay on their conventional hues rather than joining the pink:
+   they encode meaning, not brand, and a leaderboard where 91 and 54 are both
+   pink says nothing. */
+
+:root {
+  /* Unset = follow the OS. The toggle narrows this to a single value. */
+  color-scheme: light dark;
+
+  /* --- Material: not colours, so these cannot use light-dark() ------------ */
+  --glass-blur: 24px;
+  --glass-saturate: 150%;
+
+  --radius-panel: 28px;
+  --radius-card: 20px;
+  --radius-control: 14px;
+
+  --ease-glass: cubic-bezier(0.22, 1, 0.36, 1);
+  --dur-theme: 200ms;
+  --dur-hover: 200ms;
+
+  /* --- Page canvas -------------------------------------------------------- */
+  --t-bg-1: light-dark(#fff1f7, #0d0b10);
+  --t-bg-2: light-dark(#f5eeff, #150e18);
+  --t-bg-3: light-dark(#fffaf7, #1a101b);
+  /* Ambient light. Deliberately weak in dark — a glow, not a neon sign. */
+  --t-glow-a: light-dark(rgba(245, 139, 183, 0.30), rgba(255, 143, 190, 0.10));
+  --t-glow-b: light-dark(rgba(167, 139, 250, 0.20), rgba(168, 120, 220, 0.08));
+
+  /* --- Surfaces ----------------------------------------------------------- */
+  --t-canvas: light-dark(#fff5f9, #0d0b10);
+  --t-surface: light-dark(rgba(255, 255, 255, 0.38), rgba(30, 24, 33, 0.58));
+  --t-elevated: light-dark(rgba(255, 255, 255, 0.60), rgba(52, 42, 57, 0.60));
+  /* Opaque stand-ins for browsers without backdrop-filter — see @supports. */
+  --t-surface-solid: light-dark(#fffafc, #1b1620);
+  --t-elevated-solid: light-dark(#fff4f8, #2a2230);
+
+  --t-hairline: light-dark(rgba(255, 255, 255, 0.55), rgba(255, 210, 230, 0.14));
+  --t-hairline-strong: light-dark(rgba(196, 146, 172, 0.42), rgba(255, 210, 230, 0.24));
+  /* The 1px inner top edge that reads as "lit from above". */
+  --t-highlight: light-dark(rgba(255, 255, 255, 0.85), rgba(255, 220, 238, 0.10));
+
+  /* --- Text --------------------------------------------------------------- */
+  --t-ink: light-dark(#2c2028, #faf5f8);
+  --t-ink-soft: light-dark(#4a3a45, #cdbfc7);
+  --t-muted: light-dark(#63505c, #ac9da8);
+  --t-subtle: light-dark(#7a6672, #9b8b97);
+
+  /* --- Accent ------------------------------------------------------------- */
+  --t-accent: light-dark(#a83263, #ff8fbe);            /* text / icons — AA */
+  --t-accent-material: light-dark(#f58bb7, #ff8fbe);   /* fills, bars, glow */
+  --t-primary: light-dark(#c43d74, #ff8fbe);           /* CTA surface */
+  --t-on-primary: light-dark(#ffffff, #2a0f1c);        /* text on that surface */
+  --t-accent-soft: light-dark(rgba(245, 139, 183, 0.20), rgba(255, 143, 190, 0.14));
+  --t-accent-line: light-dark(rgba(245, 139, 183, 0.50), rgba(255, 143, 190, 0.32));
+  --t-focus: light-dark(rgba(196, 61, 116, 0.38), rgba(255, 143, 190, 0.42));
+
+  /* --- Status ------------------------------------------------------------- */
+  --t-success: light-dark(#0f7a54, #6ee7b7);
+  --t-success-soft: light-dark(rgba(16, 185, 129, 0.16), rgba(16, 185, 129, 0.18));
+  --t-success-bar: light-dark(#10a06e, #34d399);
+  --t-warn: light-dark(#8a5a06, #fcd34d);
+  --t-warn-soft: light-dark(rgba(245, 158, 11, 0.18), rgba(245, 158, 11, 0.16));
+  --t-warn-line: light-dark(rgba(180, 120, 20, 0.42), rgba(252, 211, 77, 0.32));
+  --t-warn-bar: light-dark(#d98207, #fbbf24);
+  --t-danger: light-dark(#b3243f, #fda4af);
+  --t-danger-soft: light-dark(rgba(244, 63, 94, 0.14), rgba(244, 63, 94, 0.18));
+  --t-info: light-dark(#1f6f9c, #7dd3fc);
+  --t-info-bar: light-dark(#2d8fc4, #38bdf8);
+
+  /* --- Elevation ---------------------------------------------------------- */
+  /* Light: pink-violet ambient light, never grey-black.
+     Dark: deep transparent black, so panels separate from the canvas. */
+  --t-shadow-ambient: light-dark(rgba(190, 110, 155, 0.22), rgba(0, 0, 0, 0.55));
+  --t-shadow-contact: light-dark(rgba(150, 90, 135, 0.12), rgba(0, 0, 0, 0.38));
+  --t-shadow-lift: light-dark(rgba(190, 110, 155, 0.30), rgba(0, 0, 0, 0.62));
+}
+
+/* Manual override. Narrowing color-scheme is all light-dark() needs, so the
+   entire toggle costs two rules instead of a duplicated palette. */
+:root[data-theme='light'] { color-scheme: light; }
+:root[data-theme='dark'] { color-scheme: dark; }
+
+/* Saturation is not a colour, so it takes the long way round. Dark glass wants
+   less boost or the pinks turn lurid. */
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme='light']) { --glass-saturate: 130%; }
+}
+:root[data-theme='dark'] { --glass-saturate: 130%; }
+:root[data-theme='light'] { --glass-saturate: 150%; }
+
+/* Expose the roles to Tailwind. `inline` makes utilities emit `var(--color-x)`
+   rather than copying the value, which is what lets a theme switch repaint
+   without regenerating a single class. Every role name that existed before is
+   still here, so no existing page file needs to change. */
+@theme inline {
+  --color-canvas: var(--t-canvas);
+  --color-surface: var(--t-surface);
+  --color-elevated: var(--t-elevated);
+  --color-hairline: var(--t-hairline);
+  --color-hairline-strong: var(--t-hairline-strong);
+
+  --color-ink: var(--t-ink);
+  --color-ink-soft: var(--t-ink-soft);
+  --color-muted: var(--t-muted);
+  --color-subtle: var(--t-subtle);
+
+  --color-primary: var(--t-primary);
+  --color-primary-soft: var(--t-accent-material);
+  --color-accent: var(--t-accent);
+  --color-accent-material: var(--t-accent-material);
+  --color-accent-soft: var(--t-accent-soft);
+  --color-accent-line: var(--t-accent-line);
+
+  --color-success: var(--t-success);
+  --color-success-soft: var(--t-success-soft);
+  --color-success-bar: var(--t-success-bar);
+  --color-warn: var(--t-warn);
+  --color-warn-soft: var(--t-warn-soft);
+  --color-warn-line: var(--t-warn-line);
+  --color-warn-bar: var(--t-warn-bar);
+  --color-danger: var(--t-danger);
+  --color-danger-soft: var(--t-danger-soft);
+  --color-info: var(--t-info);
+  --color-info-bar: var(--t-info-bar);
 
   --font-sans: 'Plus Jakarta Sans', ui-sans-serif, system-ui, -apple-system,
     'Segoe UI', Roboto, sans-serif;
@@ -33,63 +155,311 @@
 
 html {
   font-family: var(--font-sans);
-  /* Native controls, scrollbars and form widgets follow the theme. */
-  color-scheme: dark;
 }
 
 body {
-  background-color: var(--color-canvas);
-  color: var(--color-ink);
+  min-height: 100dvh;
+  color: var(--t-ink);
+  /* Two soft light sources over a low-contrast gradient. These glow layers are
+     what the panels actually blur, so they carry most of the depth. */
+  background-color: var(--t-canvas);
+  background-image:
+    radial-gradient(70rem 40rem at 12% -12%, var(--t-glow-a), transparent 62%),
+    radial-gradient(55rem 34rem at 92% 4%, var(--t-glow-b), transparent 58%),
+    linear-gradient(165deg, var(--t-bg-1) 0%, var(--t-bg-2) 48%, var(--t-bg-3) 100%);
+  background-attachment: fixed;
 }
 
+/* ===========================================================================
+   Glass primitives
+   =========================================================================== */
 @layer components {
-  /* Surfaces */
+  /* Main panel: radius 28, full blur, ambient shadow, lit top edge. */
+  .panel {
+    background-color: var(--t-surface);
+    -webkit-backdrop-filter: blur(var(--glass-blur)) saturate(var(--glass-saturate));
+    backdrop-filter: blur(var(--glass-blur)) saturate(var(--glass-saturate));
+    border: 1px solid var(--t-hairline);
+    border-radius: var(--radius-panel);
+    box-shadow:
+      0 24px 60px -28px var(--t-shadow-ambient),
+      0 6px 18px -12px var(--t-shadow-contact),
+      inset 0 1px 0 var(--t-highlight);
+  }
+
+  /* Inner card: same material, one step down in radius and elevation. */
   .card {
-    @apply bg-surface border border-hairline rounded-2xl shadow-sm;
+    background-color: var(--t-surface);
+    -webkit-backdrop-filter: blur(var(--glass-blur)) saturate(var(--glass-saturate));
+    backdrop-filter: blur(var(--glass-blur)) saturate(var(--glass-saturate));
+    border: 1px solid var(--t-hairline);
+    border-radius: var(--radius-card);
+    box-shadow:
+      0 16px 40px -28px var(--t-shadow-ambient),
+      inset 0 1px 0 var(--t-highlight);
   }
+
+  /* Interactive glass: lifts 2px and gains light on hover. */
+  .panel-interactive,
   .card-link {
-    @apply bg-surface border border-hairline rounded-2xl shadow-sm transition
-           hover:bg-elevated hover:border-accent-line;
+    background-color: var(--t-surface);
+    -webkit-backdrop-filter: blur(var(--glass-blur)) saturate(var(--glass-saturate));
+    backdrop-filter: blur(var(--glass-blur)) saturate(var(--glass-saturate));
+    border: 1px solid var(--t-hairline);
+    border-radius: var(--radius-card);
+    box-shadow:
+      0 16px 40px -28px var(--t-shadow-ambient),
+      inset 0 1px 0 var(--t-highlight);
+    transition:
+      transform var(--dur-hover) var(--ease-glass),
+      box-shadow var(--dur-hover) var(--ease-glass),
+      border-color var(--dur-hover) var(--ease-glass),
+      background-color var(--dur-theme) ease;
+  }
+  .panel-interactive:hover,
+  .card-link:hover {
+    transform: translateY(-2px);
+    border-color: var(--t-accent-line);
+    box-shadow:
+      0 30px 70px -26px var(--t-shadow-lift),
+      0 8px 20px -12px var(--t-shadow-contact),
+      inset 0 1px 0 var(--t-highlight);
+  }
+  .panel-interactive:focus-visible,
+  .card-link:focus-visible {
+    outline: none;
+    border-color: var(--t-accent-line);
+    box-shadow:
+      0 0 0 3px var(--t-focus),
+      inset 0 1px 0 var(--t-highlight);
   }
 
-  /* Buttons */
+  /* Promotes a card-radius surface to panel radius. */
+  .panel-lg { border-radius: var(--radius-panel); }
+
+  /* ---- Buttons ---------------------------------------------------------- */
   .btn {
-    @apply inline-flex items-center justify-center gap-2 h-10 px-4 rounded-lg
-           text-sm font-semibold transition-colors cursor-pointer
-           focus-visible:outline-none focus-visible:ring-2
-           focus-visible:ring-sky-400/50 disabled:opacity-50
+    @apply inline-flex items-center justify-center gap-2 h-10 px-4
+           text-sm font-semibold cursor-pointer
+           focus-visible:outline-none disabled:opacity-50
            disabled:cursor-not-allowed;
+    border-radius: var(--radius-control);
+    transition:
+      background-color var(--dur-hover) ease,
+      border-color var(--dur-hover) ease,
+      color var(--dur-hover) ease,
+      box-shadow var(--dur-hover) var(--ease-glass),
+      transform var(--dur-hover) var(--ease-glass);
   }
-  .btn-primary { @apply bg-sky-600 text-white hover:bg-sky-500; }
-  /* Highest-emphasis button: on a dark canvas that means near-white, not near-black. */
-  .btn-dark    { @apply bg-ink text-canvas hover:bg-white; }
-  .btn-ghost   { @apply border border-hairline text-ink-soft hover:bg-elevated; }
-  .btn-sm      { @apply h-9 px-3 text-xs; }
+  .btn:focus-visible { box-shadow: 0 0 0 3px var(--t-focus); }
+  .btn:not(:disabled):active { transform: translateY(1px); }
 
-  /* Form controls — inset, so darker than the card they sit on. */
-  .field {
-    @apply w-full h-10 px-3 rounded-lg border border-hairline bg-canvas text-sm
-           text-ink placeholder:text-subtle transition
-           focus:outline-none focus:border-sky-500 focus:ring-2 focus:ring-sky-500/25;
+  .btn-primary {
+    background-color: var(--t-primary);
+    color: var(--t-on-primary);
+    box-shadow: 0 10px 24px -14px var(--t-shadow-lift);
   }
+  .btn-primary:not(:disabled):hover { filter: brightness(1.08); }
+
+  /* Highest-emphasis neutral. Follows the theme instead of being fixed dark. */
+  .btn-dark {
+    background-color: var(--t-ink);
+    color: var(--t-canvas);
+  }
+  .btn-dark:not(:disabled):hover { filter: brightness(1.12); }
+
+  /* Ghost is glass — the button form of the panel material. */
+  .btn-ghost {
+    background-color: var(--t-elevated);
+    -webkit-backdrop-filter: blur(12px) saturate(var(--glass-saturate));
+    backdrop-filter: blur(12px) saturate(var(--glass-saturate));
+    border: 1px solid var(--t-hairline);
+    color: var(--t-ink-soft);
+    box-shadow: inset 0 1px 0 var(--t-highlight);
+  }
+  .btn-ghost:not(:disabled):hover {
+    border-color: var(--t-accent-line);
+    color: var(--t-ink);
+  }
+
+  .btn-sm {
+    @apply h-9 px-3 text-xs;
+    border-radius: calc(var(--radius-control) - 3px);
+  }
+
+  /* ---- Form controls ---------------------------------------------------- */
+  /* Inset material: inputs should read as holes in the glass, not as more
+     panels stacked on top of it. */
+  .field,
   .field-area {
-    @apply w-full px-3 py-2 rounded-lg border border-hairline bg-canvas text-sm
-           text-ink placeholder:text-subtle transition
-           focus:outline-none focus:border-sky-500 focus:ring-2 focus:ring-sky-500/25;
+    @apply w-full text-sm;
+    background-color: var(--t-elevated);
+    -webkit-backdrop-filter: blur(12px) saturate(var(--glass-saturate));
+    backdrop-filter: blur(12px) saturate(var(--glass-saturate));
+    border: 1px solid var(--t-hairline-strong);
+    border-radius: var(--radius-control);
+    color: var(--t-ink);
+    transition:
+      border-color var(--dur-hover) ease,
+      box-shadow var(--dur-hover) ease,
+      background-color var(--dur-theme) ease;
   }
-  .label { @apply block text-sm font-medium text-ink-soft; }
+  .field { @apply h-10 px-3; }
+  .field-area { @apply px-3 py-2; }
+  .field::placeholder,
+  .field-area::placeholder { color: var(--t-subtle); }
+  .field:focus,
+  .field-area:focus {
+    outline: none;
+    border-color: var(--t-primary);
+    box-shadow: 0 0 0 3px var(--t-focus);
+  }
+  .label {
+    @apply block text-sm font-medium;
+    color: var(--t-ink-soft);
+  }
 
-  /* Badges — tinted fills rather than pale washes, which vanish on dark. */
+  /* ---- Badges ----------------------------------------------------------- */
   .badge {
     @apply inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-xs font-medium;
+    border: 1px solid transparent;
   }
-  .badge-muted   { @apply bg-elevated text-muted; }
-  .badge-accent  { @apply bg-accent-soft text-accent; }
-  .badge-success { @apply bg-emerald-500/15 text-emerald-300; }
-  .badge-warn    { @apply bg-amber-500/15 text-amber-300; }
-  .badge-danger  { @apply bg-red-500/15 text-red-300; }
+  .badge-muted {
+    background-color: var(--t-elevated);
+    border-color: var(--t-hairline);
+    color: var(--t-muted);
+  }
+  .badge-accent {
+    background-color: var(--t-accent-soft);
+    border-color: var(--t-accent-line);
+    color: var(--t-accent);
+  }
+  .badge-success {
+    background-color: var(--t-success-soft);
+    color: var(--t-success);
+  }
+  .badge-warn {
+    background-color: var(--t-warn-soft);
+    color: var(--t-warn);
+  }
+  .badge-danger {
+    background-color: var(--t-danger-soft);
+    color: var(--t-danger);
+  }
+
+  /* ---- Overlay surfaces -------------------------------------------------- */
+  /* This codebase has no Modal / Dropdown / Tooltip component today — menus are
+     native <select> and disclosures are <details>. These are the materials such
+     components should use when they arrive, so the first one written does not
+     invent its own glass. Higher opacity than .panel because a floating surface
+     must stay readable over arbitrary content beneath it. */
+  .surface-overlay {
+    background-color: var(--t-elevated);
+    -webkit-backdrop-filter: blur(30px) saturate(var(--glass-saturate));
+    backdrop-filter: blur(30px) saturate(var(--glass-saturate));
+    border: 1px solid var(--t-hairline);
+    border-radius: var(--radius-card);
+    box-shadow:
+      0 32px 80px -24px var(--t-shadow-ambient),
+      0 10px 24px -14px var(--t-shadow-contact),
+      inset 0 1px 0 var(--t-highlight);
+  }
+  .scrim {
+    background-color: light-dark(rgba(64, 30, 50, 0.28), rgba(0, 0, 0, 0.58));
+    -webkit-backdrop-filter: blur(6px);
+    backdrop-filter: blur(6px);
+  }
+  /* Tooltips are small and land on anything, so they are opaque by design. */
+  .tooltip {
+    @apply px-2 py-1 text-xs font-medium;
+    background-color: var(--t-ink);
+    color: var(--t-canvas);
+    border-radius: 10px;
+    box-shadow: 0 12px 30px -12px var(--t-shadow-ambient);
+  }
+
+  /* ---- Empty states ------------------------------------------------------ */
+  .empty-state {
+    @apply px-4 py-6 text-sm text-center;
+    border: 1px dashed var(--t-hairline-strong);
+    border-radius: var(--radius-card);
+    color: var(--t-muted);
+  }
+}
+
+/* ===========================================================================
+   Theme-change transition — only properties that change colour, so a switch
+   never triggers layout.
+   =========================================================================== */
+body,
+.panel,
+.card,
+.card-link,
+.panel-interactive,
+.field,
+.field-area,
+.badge,
+.btn {
+  transition-property: background-color, border-color, color, box-shadow;
+  transition-duration: var(--dur-theme);
+  transition-timing-function: ease;
+}
+
+/* ===========================================================================
+   Degradation
+   =========================================================================== */
+
+/* No backdrop-filter (older Firefox, some embedded webviews): 38% white over a
+   gradient is unreadable without the blur behind it, so go opaque instead. */
+@supports not ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
+  .panel,
+  .card,
+  .card-link,
+  .panel-interactive,
+  .surface-overlay {
+    background-color: var(--t-surface-solid);
+  }
+  .btn-ghost,
+  .field,
+  .field-area {
+    background-color: var(--t-elevated-solid);
+  }
+}
+
+/* Phones: blur is the expensive part of this design, and a fixed background
+   forces a repaint on every scroll frame. Halve one, drop the other. */
+@media (max-width: 640px) {
+  :root { --glass-blur: 12px; }
+  body { background-attachment: scroll; }
+}
+
+/* Coarse pointers get no hover lift — it only ever fires as a stuck state. */
+@media (hover: none) {
+  .panel-interactive:hover,
+  .card-link:hover { transform: none; }
 }
 
 @media (prefers-reduced-motion: reduce) {
-  * { transition-duration: 0.01ms !important; }
+  *,
+  *::before,
+  *::after {
+    transition-duration: 0.01ms !important;
+    animation-duration: 0.01ms !important;
+  }
+  .panel-interactive:hover,
+  .card-link:hover,
+  .btn:not(:disabled):active { transform: none; }
+}
+
+/* Forced colours: drop the glass rather than fight the forced palette. */
+@media (forced-colors: active) {
+  .panel,
+  .card,
+  .card-link,
+  .panel-interactive,
+  .surface-overlay {
+    -webkit-backdrop-filter: none;
+    backdrop-filter: none;
+    border: 1px solid CanvasText;
+  }
 }

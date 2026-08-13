@@ -31,7 +31,7 @@ const statusBadge = (s: string) =>
   s === 'open' ? 'badge badge-success' : s === 'closed' ? 'badge badge-danger' : 'badge badge-muted';
 
 const scoreTone = (score: number) =>
-  score >= 80 ? 'bg-emerald-500' : score >= 60 ? 'bg-sky-500' : 'bg-amber-500';
+  score >= 80 ? 'bg-success-bar' : score >= 60 ? 'bg-info-bar' : 'bg-warn-bar';
 
 /** Coarse on purpose — the exact timestamp lives on the task page. */
 const relative = (ms: number) => {

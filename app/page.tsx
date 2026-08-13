@@ -27,10 +27,13 @@ const previewRanks = [
   { name: 'Ben Okoro', score: 54, note: 'Check-then-set has a TOCTOU race; ignored the agent’s own warning.', tone: 'warn' },
 ] as const;
 
+// Score bars keep conventional status hues rather than joining the pink: they
+// encode meaning, not brand. The -bar tokens are the versions tuned to stay
+// legible on both a light and a dark canvas.
 const barTone: Record<string, string> = {
-  success: 'bg-emerald-500',
-  accent: 'bg-sky-500',
-  warn: 'bg-amber-500',
+  success: 'bg-success-bar',
+  accent: 'bg-info-bar',
+  warn: 'bg-warn-bar',
 };
 
 export default async function Home() {
@@ -70,7 +73,8 @@ export default async function Home() {
       </section>
 
       <section className="max-w-3xl mx-auto px-6 pb-20">
-        <div className="card p-6 sm:p-8">
+        {/* Hero preview is a main panel — the largest glass surface on the page. */}
+        <div className="panel p-6 sm:p-8">
           <div className="flex items-center justify-between mb-5">
             <div>
               <p className="text-xs font-mono text-subtle">TASK · RANKED</p>
@@ -99,12 +103,16 @@ export default async function Home() {
         </div>
       </section>
 
+      {/* Step cards: the same glass one step down in radius, so they read as
+          cards beneath the main panels below. The pink now comes from the
+          accent tokens rather than raw pink-500 utilities, so it follows the
+          theme instead of being pinned to one. */}
       <section className="max-w-5xl mx-auto px-6 pb-20">
         <div className="grid gap-4 sm:grid-cols-3">
           {steps.map((s, i) => (
-            <div key={s.title} className="card p-6 bg-pink-500/15 border-pink-400/40">
+            <div key={s.title} className="panel-interactive p-6 bg-accent-soft border-accent-line">
               <div className="flex items-center gap-3 mb-3">
-                <span className="inline-flex items-center justify-center w-9 h-9 rounded-lg bg-pink-500/20 text-pink-300">
+                <span className="inline-flex items-center justify-center w-9 h-9 rounded-lg bg-accent-soft text-accent ring-1 ring-accent-line">
                   <FontAwesomeIcon icon={s.icon} className="w-4 h-4" />
                 </span>
                 <span className="text-xs font-mono text-subtle">0{i + 1}</span>
@@ -123,10 +131,13 @@ export default async function Home() {
             Hiring signal you can trust
           </h2>
         </div>
+        {/* The glass panels. `panel-interactive panel-lg` is the full treatment:
+            28px radius, blurred translucent material, lit top edge, ambient
+            shadow, and a 2px lift on hover. */}
         <div className="grid gap-4 sm:grid-cols-2">
           {reasons.map((r) => (
-            <div key={r.title} className="card p-6 flex items-start gap-4">
-              <span className="shrink-0 inline-flex items-center justify-center w-10 h-10 rounded-xl bg-elevated text-accent">
+            <div key={r.title} className="panel-interactive panel-lg p-6 flex items-start gap-4">
+              <span className="shrink-0 inline-flex items-center justify-center w-10 h-10 rounded-xl bg-accent-soft text-accent ring-1 ring-accent-line">
                 <FontAwesomeIcon icon={r.icon} className="w-4 h-4" />
               </span>
               <div>

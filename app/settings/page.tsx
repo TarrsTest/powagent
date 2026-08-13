@@ -169,7 +169,7 @@ export default async function SettingsPage() {
                     <span className="badge badge-warn">pending</span>
                     <form action={revokeInvite}>
                       <input type="hidden" name="id" value={i.id} />
-                      <button type="submit" className="text-subtle hover:text-red-400 cursor-pointer" title="Revoke invite">
+                      <button type="submit" className="text-subtle hover:text-danger cursor-pointer" title="Revoke invite">
                         <FontAwesomeIcon icon={faTrash} className="w-3.5 h-3.5" />
                       </button>
                     </form>
@@ -192,7 +192,7 @@ export default async function SettingsPage() {
           </p>
 
           {isRecruiter && !profile.org_id ? (
-            <p className="text-sm text-amber-300">Create an organization first.</p>
+            <p className="text-sm text-warn">Create an organization first.</p>
           ) : (
             <IssueKeyForm scopeOptions={scopeOptions} />
           )}
@@ -208,7 +208,7 @@ export default async function SettingsPage() {
                   {!k.revoked_at && (
                     <form action={revokeKey}>
                       <input type="hidden" name="id" value={k.id} />
-                      <button type="submit" className="text-subtle hover:text-red-400 cursor-pointer" title="Revoke">
+                      <button type="submit" className="text-subtle hover:text-danger cursor-pointer" title="Revoke">
                         <FontAwesomeIcon icon={faTrash} className="w-3.5 h-3.5" />
                       </button>
                     </form>

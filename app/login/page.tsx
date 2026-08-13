@@ -5,6 +5,7 @@ import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { faEnvelope, faCheck } from '@fortawesome/free-solid-svg-icons';
 import { createClient } from '@/lib/supabase/client';
 import Brand from '@/components/Brand';
+import ThemeToggle from '@/components/ThemeToggle';
 
 export default function LoginPage() {
   const [email, setEmail] = useState('');
@@ -33,7 +34,11 @@ export default function LoginPage() {
   };
 
   return (
-    <main className="min-h-dvh flex flex-col items-center justify-center px-6 gap-6">
+    <main className="relative min-h-dvh flex flex-col items-center justify-center px-6 gap-6">
+      {/* The card is centred, so the toggle gets the corner rather than a nav. */}
+      <div className="absolute top-4 right-4">
+        <ThemeToggle />
+      </div>
       {/* Without this there is no way out of /login except the back button. */}
       <Brand />
       <div className="w-full max-w-sm card p-8">
@@ -61,7 +66,7 @@ export default function LoginPage() {
               className="field h-11"
             />
             {err && (
-              <p className="text-sm text-red-400">{err}</p>
+              <p className="text-sm text-red-600 dark:text-red-400">{err}</p>
             )}
             <button
               type="submit"

@@ -4,6 +4,7 @@ import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { faBriefcase, faListCheck, faGear, faArrowRight } from '@fortawesome/free-solid-svg-icons';
 import { getProfile } from '@/lib/profile';
 import Brand from '@/components/Brand';
+import ThemeToggle from '@/components/ThemeToggle';
 import SignOutButton from '@/components/SignOutButton';
 
 export default async function DashboardPage() {
@@ -22,6 +23,7 @@ export default async function DashboardPage() {
         <Brand href="/dashboard" />
         <div className="flex items-center gap-3">
           <span className="badge badge-muted capitalize">{profile.role}</span>
+          <ThemeToggle />
           <SignOutButton />
         </div>
       </nav>

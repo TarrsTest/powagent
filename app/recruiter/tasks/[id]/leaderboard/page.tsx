@@ -16,7 +16,7 @@ type Sub = {
 };
 
 const barTone = (score: number) =>
-  score >= 80 ? 'bg-emerald-500' : score >= 60 ? 'bg-sky-500' : 'bg-amber-500';
+  score >= 80 ? 'bg-emerald-500' : score >= 60 ? 'bg-primary-soft' : 'bg-amber-500';
 
 // A5 — the ranked view the landing page has always promised. Ranking rules
 // live in lib/leaderboard.ts, shared with GET /v1/evaluations.

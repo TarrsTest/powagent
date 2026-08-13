@@ -6,6 +6,7 @@ import {
 } from '@fortawesome/free-solid-svg-icons';
 import { createClient } from '@/lib/supabase/server';
 import Brand from '@/components/Brand';
+import ThemeToggle from '@/components/ThemeToggle';
 
 const steps = [
   { icon: faBriefcase, title: 'Post a task', body: 'Recruiters publish real, AI-agent-completable work with a scoring rubric.' },
@@ -29,7 +30,7 @@ const previewRanks = [
 
 const barTone: Record<string, string> = {
   success: 'bg-emerald-500',
-  accent: 'bg-sky-500',
+  accent: 'bg-primary-soft',
   warn: 'bg-amber-500',
 };
 
@@ -43,9 +44,12 @@ export default async function Home() {
     <main className="min-h-dvh">
       <nav className="max-w-5xl mx-auto flex items-center justify-between px-6 h-16">
         <Brand />
-        <Link href={user ? '/dashboard' : '/login'} className="btn btn-ghost btn-sm">
-          {user ? 'Dashboard' : 'Sign in'}
-        </Link>
+        <div className="flex items-center gap-2">
+          <ThemeToggle />
+          <Link href={user ? '/dashboard' : '/login'} className="btn btn-ghost btn-sm">
+            {user ? 'Dashboard' : 'Sign in'}
+          </Link>
+        </div>
       </nav>
 
       <section className="max-w-3xl mx-auto text-center px-6 pt-20 pb-16">
@@ -102,9 +106,9 @@ export default async function Home() {
       <section className="max-w-5xl mx-auto px-6 pb-20">
         <div className="grid gap-4 sm:grid-cols-3">
           {steps.map((s, i) => (
-            <div key={s.title} className="card p-6 bg-pink-500/15 border-pink-400/40">
+            <div key={s.title} className="card p-6 bg-accent-soft/50 border-accent-line">
               <div className="flex items-center gap-3 mb-3">
-                <span className="inline-flex items-center justify-center w-9 h-9 rounded-lg bg-pink-500/20 text-pink-300">
+                <span className="inline-flex items-center justify-center w-9 h-9 rounded-lg bg-primary/25 text-accent">
                   <FontAwesomeIcon icon={s.icon} className="w-4 h-4" />
                 </span>
                 <span className="text-xs font-mono text-subtle">0{i + 1}</span>

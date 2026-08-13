@@ -63,7 +63,7 @@ export default function IssueKeyForm({ scopeOptions }: { scopeOptions: ScopeOpti
                   value={value}
                   checked={selected.includes(value)}
                   onChange={() => toggle(value)}
-                  className="mt-0.5 w-4 h-4 accent-sky-600 cursor-pointer"
+                  className="mt-0.5 w-4 h-4 accent-primary cursor-pointer"
                 />
                 <span className="min-w-0">
                   <span className="block text-sm font-medium text-ink">
@@ -92,7 +92,7 @@ export default function IssueKeyForm({ scopeOptions }: { scopeOptions: ScopeOpti
       </form>
 
       {state?.error && (
-        <p className="text-sm text-red-400 flex items-center gap-2" role="alert">
+        <p className="text-sm text-red-600 dark:text-red-400 flex items-center gap-2" role="alert">
           <FontAwesomeIcon icon={faTriangleExclamation} className="w-3.5 h-3.5" />
           {state.error}
         </p>
@@ -100,7 +100,7 @@ export default function IssueKeyForm({ scopeOptions }: { scopeOptions: ScopeOpti
 
       {state?.rawKey && (
         <div className="rounded-lg border border-amber-500/40 bg-amber-500/10 p-4 space-y-2" role="status">
-          <p className="text-xs font-semibold text-amber-200 flex items-center gap-2">
+          <p className="text-xs font-semibold text-amber-700 dark:text-amber-200 flex items-center gap-2">
             <FontAwesomeIcon icon={faCircleCheck} className="w-3.5 h-3.5" />
             Copy this key now — it won’t be shown again.
           </p>
@@ -108,7 +108,7 @@ export default function IssueKeyForm({ scopeOptions }: { scopeOptions: ScopeOpti
             {state.rawKey}
           </code>
           {state.scopes && (
-            <p className="text-xs text-amber-200">
+            <p className="text-xs text-amber-700 dark:text-amber-200">
               Granted:{' '}
               {state.scopes.map((s) => (
                 <code key={s} className="font-mono mr-1.5">{s}</code>

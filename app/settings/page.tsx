@@ -8,6 +8,7 @@ import { getProfile } from '@/lib/profile';
 import { createClient } from '@/lib/supabase/server';
 import { SCOPES, describeScope } from '@/lib/apikey';
 import Brand from '@/components/Brand';
+import ThemeToggle from '@/components/ThemeToggle';
 import { createOrg, revokeKey, inviteMember, revokeInvite, acceptInvite } from './actions';
 import IssueKeyForm from './IssueKeyForm';
 
@@ -77,6 +78,7 @@ export default async function SettingsPage() {
     <main className="min-h-dvh">
       <nav className="max-w-2xl mx-auto flex items-center justify-between px-6 h-16">
         <Brand href="/dashboard" />
+        <ThemeToggle />
       </nav>
 
       <div className="max-w-2xl mx-auto px-6 py-6 space-y-6">
@@ -169,7 +171,7 @@ export default async function SettingsPage() {
                     <span className="badge badge-warn">pending</span>
                     <form action={revokeInvite}>
                       <input type="hidden" name="id" value={i.id} />
-                      <button type="submit" className="text-subtle hover:text-red-400 cursor-pointer" title="Revoke invite">
+                      <button type="submit" className="text-subtle hover:text-red-600 dark:hover:text-red-400 cursor-pointer" title="Revoke invite">
                         <FontAwesomeIcon icon={faTrash} className="w-3.5 h-3.5" />
                       </button>
                     </form>
@@ -192,7 +194,7 @@ export default async function SettingsPage() {
           </p>
 
           {isRecruiter && !profile.org_id ? (
-            <p className="text-sm text-amber-300">Create an organization first.</p>
+            <p className="text-sm text-amber-700 dark:text-amber-300">Create an organization first.</p>
           ) : (
             <IssueKeyForm scopeOptions={scopeOptions} />
           )}
@@ -208,7 +210,7 @@ export default async function SettingsPage() {
                   {!k.revoked_at && (
                     <form action={revokeKey}>
                       <input type="hidden" name="id" value={k.id} />
-                      <button type="submit" className="text-subtle hover:text-red-400 cursor-pointer" title="Revoke">
+                      <button type="submit" className="text-subtle hover:text-red-600 dark:hover:text-red-400 cursor-pointer" title="Revoke">
                         <FontAwesomeIcon icon={faTrash} className="w-3.5 h-3.5" />
                       </button>
                     </form>

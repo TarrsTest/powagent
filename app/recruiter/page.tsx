@@ -14,6 +14,7 @@ import {
 } from '@/lib/leaderboard';
 import { upcomingDeadlines, isPastDeadline } from '@/lib/submissionRules';
 import Brand from '@/components/Brand';
+import ThemeToggle from '@/components/ThemeToggle';
 import { createJob, setJobStatus, addTask, createRubric } from './actions';
 
 type Task = { id: string; title: string; created_at: string; deadline_at: string | null };
@@ -31,7 +32,7 @@ const statusBadge = (s: string) =>
   s === 'open' ? 'badge badge-success' : s === 'closed' ? 'badge badge-danger' : 'badge badge-muted';
 
 const scoreTone = (score: number) =>
-  score >= 80 ? 'bg-emerald-500' : score >= 60 ? 'bg-sky-500' : 'bg-amber-500';
+  score >= 80 ? 'bg-emerald-500' : score >= 60 ? 'bg-primary-soft' : 'bg-amber-500';
 
 /** Coarse on purpose — the exact timestamp lives on the task page. */
 const relative = (ms: number) => {
@@ -146,7 +147,10 @@ export default async function RecruiterPage() {
     <main className="min-h-dvh">
       <nav className="max-w-3xl mx-auto flex items-center justify-between px-6 h-16">
         <Brand href="/dashboard" />
-        <Link href="/settings" className="btn btn-ghost btn-sm">Settings &amp; API keys</Link>
+        <div className="flex items-center gap-2">
+          <ThemeToggle />
+          <Link href="/settings" className="btn btn-ghost btn-sm">Settings &amp; API keys</Link>
+        </div>
       </nav>
 
       <div className="max-w-3xl mx-auto px-6 py-6 space-y-6">

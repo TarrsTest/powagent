@@ -1,39 +1,87 @@
 @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap');
 @import "tailwindcss";
 
-/* powagent design system — "Soft UI Evolution", dark theme: deep navy canvas,
-   sky-blue accent, soft elevation, Plus Jakarta Sans.
+/* powagent design system — "Soft UI Evolution": pink-plum brand, soft
+   elevation, Plus Jakarta Sans. Ships BOTH a light and a dark theme.
 
    Colours are addressed by ROLE, not by shade. Pages use `text-ink`,
    `bg-surface`, `border-hairline` … rather than raw `text-slate-900` /
-   `bg-white`, so the palette lives here and nowhere else — retheming (or
-   adding a light mode later) means editing this block, not 13 page files. */
+   `bg-white`, so the palette lives here and nowhere else — retheming means
+   editing this block, not 13 page files.
+
+   The surfaces carry the pink undertone themselves rather than sitting as
+   neutral greys under a pink accent — that is the difference between a pink
+   theme and a grey theme with pink buttons. Status colours (emerald / amber /
+   red, below) stay on their conventional hues: they encode meaning, not brand,
+   and a leaderboard where 91 and 54 are both pink says nothing.
+
+   HOW THE TWO THEMES SWITCH. `@theme` below defines the LIGHT palette, so
+   light is what you get with no class on <html>. `html.dark` re-declares the
+   same custom properties with the dark values; because every utility compiles
+   to `var(--color-…)`, redefining the property is all it takes — no page, and
+   no component class below, mentions a theme. The class is put on <html>
+   before first paint by the inline script in app/layout.tsx (see there for
+   why it can't be a React effect), and toggled by components/ThemeToggle.tsx.
+
+   The `dark:` variant is redefined to follow that class instead of the OS
+   setting, since the user's explicit choice has to win over the OS. It is only
+   needed for the handful of status colours that aren't role tokens. */
+@custom-variant dark (&:where(.dark, .dark *));
+
 @theme {
   /* Surfaces — canvas is the page, surface is a card, elevated is a fill. */
-  --color-canvas: #0a1020;
-  --color-surface: #121b2e;
-  --color-elevated: #1b2540;
-  --color-hairline: #253048;
+  --color-canvas: #fdf6fa;
+  --color-surface: #ffffff;
+  --color-elevated: #fbeaf3;
+  --color-hairline: #f2d9e6;
 
   /* Text — ink is primary, then progressively quieter. */
-  --color-ink: #e9eff8;
-  --color-ink-soft: #c3cfe0;
-  --color-muted: #93a3ba;
-  --color-subtle: #6b7c96;
+  --color-ink: #2b1020;
+  --color-ink-soft: #5d2c46;
+  --color-muted: #7d5069;
+  --color-subtle: #9b7189;
 
-  /* Accent — text/icon accent plus its tinted surface and border. */
-  --color-primary: #38bdf8;
-  --color-accent: #5cb6f7;
-  --color-accent-soft: #10243a;
-  --color-accent-line: #234c6e;
+  /* Accent — solid brand fill, its lighter hover/focus partner, then the
+     text/icon accent and its tinted surface and border.
+     `primary` is the brand fill and carries white text at AA in both themes;
+     `accent` is the one that must invert between themes — it is TEXT, so it
+     goes dark on light and light on dark. They are not interchangeable:
+     swapping them fails contrast in both directions. */
+  --color-primary: #db2777;
+  --color-primary-soft: #ec4899;
+  --color-accent: #be185d;
+  --color-accent-soft: #fce7f3;
+  --color-accent-line: #f7b6d5;
 
   --font-sans: 'Plus Jakarta Sans', ui-sans-serif, system-ui, -apple-system,
     'Segoe UI', Roboto, sans-serif;
 }
 
+/* Dark theme — deep plum canvas. Same roles, same names, inverted ramp. */
+html.dark {
+  --color-canvas: #150a13;
+  --color-surface: #23131f;
+  --color-elevated: #321c2c;
+  --color-hairline: #43263a;
+
+  --color-ink: #fbeaf4;
+  --color-ink-soft: #eccddd;
+  --color-muted: #c99cb5;
+  --color-subtle: #a2748d;
+
+  --color-primary: #db2777;
+  --color-primary-soft: #ec4899;
+  --color-accent: #f77fbe;
+  --color-accent-soft: #3d1128;
+  --color-accent-line: #6b2149;
+}
+
 html {
   font-family: var(--font-sans);
   /* Native controls, scrollbars and form widgets follow the theme. */
+  color-scheme: light;
+}
+html.dark {
   color-scheme: dark;
 }
 
@@ -57,12 +105,14 @@ body {
     @apply inline-flex items-center justify-center gap-2 h-10 px-4 rounded-lg
            text-sm font-semibold transition-colors cursor-pointer
            focus-visible:outline-none focus-visible:ring-2
-           focus-visible:ring-sky-400/50 disabled:opacity-50
+           focus-visible:ring-primary-soft/50 disabled:opacity-50
            disabled:cursor-not-allowed;
   }
-  .btn-primary { @apply bg-sky-600 text-white hover:bg-sky-500; }
-  /* Highest-emphasis button: on a dark canvas that means near-white, not near-black. */
-  .btn-dark    { @apply bg-ink text-canvas hover:bg-white; }
+  .btn-primary { @apply bg-primary text-white hover:bg-primary-soft; }
+  /* Highest-emphasis button: ink-on-canvas, so it inverts with the theme for
+     free — near-black on light, near-white on dark. Hover is opacity rather
+     than a second colour, which would have to be theme-specific. */
+  .btn-dark    { @apply bg-ink text-canvas hover:opacity-90; }
   .btn-ghost   { @apply border border-hairline text-ink-soft hover:bg-elevated; }
   .btn-sm      { @apply h-9 px-3 text-xs; }
 
@@ -70,24 +120,25 @@ body {
   .field {
     @apply w-full h-10 px-3 rounded-lg border border-hairline bg-canvas text-sm
            text-ink placeholder:text-subtle transition
-           focus:outline-none focus:border-sky-500 focus:ring-2 focus:ring-sky-500/25;
+           focus:outline-none focus:border-primary-soft focus:ring-2 focus:ring-primary-soft/25;
   }
   .field-area {
     @apply w-full px-3 py-2 rounded-lg border border-hairline bg-canvas text-sm
            text-ink placeholder:text-subtle transition
-           focus:outline-none focus:border-sky-500 focus:ring-2 focus:ring-sky-500/25;
+           focus:outline-none focus:border-primary-soft focus:ring-2 focus:ring-primary-soft/25;
   }
   .label { @apply block text-sm font-medium text-ink-soft; }
 
-  /* Badges — tinted fills rather than pale washes, which vanish on dark. */
+  /* Badges — a tinted fill reads on either theme, but the status TEXT has to
+     flip: emerald-300 vanishes on white, emerald-700 vanishes on plum. */
   .badge {
     @apply inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-xs font-medium;
   }
   .badge-muted   { @apply bg-elevated text-muted; }
   .badge-accent  { @apply bg-accent-soft text-accent; }
-  .badge-success { @apply bg-emerald-500/15 text-emerald-300; }
-  .badge-warn    { @apply bg-amber-500/15 text-amber-300; }
-  .badge-danger  { @apply bg-red-500/15 text-red-300; }
+  .badge-success { @apply bg-emerald-500/15 text-emerald-700 dark:text-emerald-300; }
+  .badge-warn    { @apply bg-amber-500/15 text-amber-700 dark:text-amber-300; }
+  .badge-danger  { @apply bg-red-500/15 text-red-700 dark:text-red-300; }
 }
 
 @media (prefers-reduced-motion: reduce) {

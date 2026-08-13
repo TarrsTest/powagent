@@ -4,6 +4,7 @@ import { faPaperPlane, faClock, faHandshake, faCircleCheck, faLock } from '@fort
 import { createClient } from '@/lib/supabase/server';
 import { checkSubmissionAllowed } from '@/lib/submissionRules';
 import Brand from '@/components/Brand';
+import ThemeToggle from '@/components/ThemeToggle';
 import { acceptTask } from './actions';
 import SubmitWorkForm from './SubmitWorkForm';
 
@@ -87,11 +88,14 @@ export default async function TasksPage() {
     <main className="min-h-dvh">
       <nav className="max-w-2xl mx-auto flex items-center justify-between px-6 h-16">
         <Brand href={userId ? '/dashboard' : '/'} />
-        {userId ? (
-          <Link href="/settings" className="btn btn-ghost btn-sm">API key</Link>
-        ) : (
-          <Link href="/login" className="btn btn-primary btn-sm">Sign in</Link>
-        )}
+        <div className="flex items-center gap-2">
+          <ThemeToggle />
+          {userId ? (
+            <Link href="/settings" className="btn btn-ghost btn-sm">API key</Link>
+          ) : (
+            <Link href="/login" className="btn btn-primary btn-sm">Sign in</Link>
+          )}
+        </div>
       </nav>
 
       <div className="max-w-2xl mx-auto px-6 py-6 space-y-6">

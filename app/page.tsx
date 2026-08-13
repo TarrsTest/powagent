@@ -102,9 +102,9 @@ export default async function Home() {
       <section className="max-w-5xl mx-auto px-6 pb-20">
         <div className="grid gap-4 sm:grid-cols-3">
           {steps.map((s, i) => (
-            <div key={s.title} className="card p-6">
+            <div key={s.title} className="card p-6 bg-pink-500/15 border-pink-400/40">
               <div className="flex items-center gap-3 mb-3">
-                <span className="inline-flex items-center justify-center w-9 h-9 rounded-lg bg-accent-soft text-accent">
+                <span className="inline-flex items-center justify-center w-9 h-9 rounded-lg bg-pink-500/20 text-pink-300">
                   <FontAwesomeIcon icon={s.icon} className="w-4 h-4" />
                 </span>
                 <span className="text-xs font-mono text-subtle">0{i + 1}</span>

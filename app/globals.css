@@ -53,14 +53,11 @@
   --color-accent-soft: #fce7f3;
   --color-accent-line: #f7b6d5;
 
-  /* Deep-rose card fill, consumed ONLY through `dark:bg-surface-rose` (the
-     landing page's ranked-preview card). It is declared here because Tailwind
-     generates utilities from @theme and nowhere else; the light value is never
-     painted, so it mirrors --color-surface to keep light mode byte-identical if
-     the variant were ever dropped.
-     The dark value below is as red-dominant as the text on it allows: `subtle`
-     is the dimmest label on that card and holds 4.58:1 against it, the same
-     ratio it has on the ordinary surface. Going rosier drops it under AA. */
+  /* Rose glass fill, consumed ONLY through `dark:bg-surface-rose` (the landing
+     page's ranked-preview card). It is declared here because Tailwind generates
+     utilities from @theme and nowhere else; the light value is never painted,
+     so it mirrors --color-surface to keep light mode byte-identical if the
+     variant were ever dropped. See the dark value for how it is derived. */
   --color-surface-rose: #ffffff;
 
   --font-sans: 'Plus Jakarta Sans', ui-sans-serif, system-ui, -apple-system,
@@ -85,10 +82,17 @@ html.dark {
   --color-accent-soft: #3d1128;
   --color-accent-line: #6b2149;
 
-  /* Deep rose — see the note in @theme. Red-dominant where --color-surface is
-     near-neutral plum, so the ranked-preview card reads as rose rather than as
-     another grey card, at the same text contrast. */
-  --color-surface-rose: #2e0c1a;
+  /* Rose glass — the same material as --glass-surface (identical 0.58 alpha, so
+     it blurs and picks up the canvas glow like every other panel), tinted rose
+     instead of neutral plum.
+     The tint is as red-dominant as the text allows. Because the fill is
+     translucent, the effective background is this colour composited over
+     whatever the canvas gradient puts behind the card — and the card moves
+     against that gradient as the page scrolls. The brightest backdrop the
+     gradient can produce at any scroll position or viewport is rgb(40,25,44);
+     over that, `subtle` (the dimmest label on the card) holds 4.55:1. Pushing
+     the tint redder or lighter drops it under AA in the glow. */
+  --color-surface-rose: rgba(50, 4, 20, 0.58);
 }
 
 html {
@@ -353,6 +357,12 @@ body {
   .field,
   .field-area {
     background-color: var(--glass-elevated-solid);
+  }
+  /* Same reasoning for the rose card: without the blur its 58% fill would sit
+     raw on the gradient. Re-point the token rather than restate the utility, so
+     `dark:bg-surface-rose` keeps working and resolves to the opaque rose. */
+  html.dark {
+    --color-surface-rose: #2e0c1a;
   }
 }
 

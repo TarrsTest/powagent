@@ -1,19 +1,27 @@
 @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap');
 @import "tailwindcss";
 
-/* powagent design system — "Soft UI Evolution": pink-plum brand, soft
-   elevation, Plus Jakarta Sans. Ships BOTH a light and a dark theme.
+/* powagent design system — "Soft UI Evolution": soft elevation, Plus Jakarta
+   Sans. Ships BOTH a light and a dark theme, and they are NOT the same hue:
+
+     light — navy/slate ink on cool white, sky-blue accent (the original brand)
+     dark  — pink-plum: rose surfaces, magenta accent
+
+   Pink is the DARK theme's identity, not the product's. Light is deliberately
+   cool everywhere — canvas, hairlines, shadows and the canvas glows included —
+   because a warm tint on any of those makes the whole app read as pink.
 
    Colours are addressed by ROLE, not by shade. Pages use `text-ink`,
    `bg-surface`, `border-hairline` … rather than raw `text-slate-900` /
    `bg-white`, so the palette lives here and nowhere else — retheming means
    editing this block, not 13 page files.
 
-   The surfaces carry the pink undertone themselves rather than sitting as
-   neutral greys under a pink accent — that is the difference between a pink
+   In dark, the surfaces carry the pink undertone themselves rather than sitting
+   as neutral greys under a pink accent — that is the difference between a pink
    theme and a grey theme with pink buttons. Status colours (emerald / amber /
-   red, below) stay on their conventional hues: they encode meaning, not brand,
-   and a leaderboard where 91 and 54 are both pink says nothing.
+   red, below) stay on their conventional hues in both themes: they encode
+   meaning, not brand, and a leaderboard where 91 and 54 are both pink says
+   nothing.
 
    HOW THE TWO THEMES SWITCH. `@theme` below defines the LIGHT palette, so
    light is what you get with no class on <html>. `html.dark` re-declares the
@@ -28,18 +36,27 @@
    needed for the handful of status colours that aren't role tokens. */
 @custom-variant dark (&:where(.dark, .dark *));
 
+/* Light theme — the product's original navy/slate ink with a sky-blue accent.
+   Pink belongs to the dark theme only: the rose palette below in html.dark is
+   the deliberate one, and light must stay cool. Anything tinted warm here
+   (canvas, hairlines, shadows, the canvas glows) reads as "the whole app is
+   pink", which is not the intent. */
 @theme {
   /* Surfaces — canvas is the page, surface is a card, elevated is a fill. */
-  --color-canvas: #fdf6fa;
+  --color-canvas: #f8fafc;
   --color-surface: #ffffff;
-  --color-elevated: #fbeaf3;
-  --color-hairline: #f2d9e6;
+  --color-elevated: #f1f5f9;
+  --color-hairline: #e2e8f0;
 
   /* Text — ink is primary, then progressively quieter. */
-  --color-ink: #2b1020;
-  --color-ink-soft: #5d2c46;
-  --color-muted: #7d5069;
-  --color-subtle: #9b7189;
+  --color-ink: #0f172a;
+  --color-ink-soft: #334155;
+  --color-muted: #475569;
+  /* Darker than slate-500 on purpose: `subtle` is used for the step-card index
+     ("01") on top of `bg-accent-soft/50`, and slate-500 measures 4.22:1 there —
+     under AA. This holds 4.79:1 on that tint and 5.41:1 on plain white, while
+     staying clearly lighter than `muted`. */
+  --color-subtle: #5c6b82;
 
   /* Accent — solid brand fill, its lighter hover/focus partner, then the
      text/icon accent and its tinted surface and border.
@@ -47,11 +64,11 @@
      `accent` is the one that must invert between themes — it is TEXT, so it
      goes dark on light and light on dark. They are not interchangeable:
      swapping them fails contrast in both directions. */
-  --color-primary: #db2777;
-  --color-primary-soft: #ec4899;
-  --color-accent: #be185d;
-  --color-accent-soft: #fce7f3;
-  --color-accent-line: #f7b6d5;
+  --color-primary: #0284c7;
+  --color-primary-soft: #0ea5e9;
+  --color-accent: #0369a1;
+  --color-accent-soft: #e0f2fe;
+  --color-accent-line: #bae6fd;
 
   /* Rose glass fill, consumed ONLY through `dark:bg-surface-rose` (the landing
      page's ranked-preview card). It is declared here because Tailwind generates
@@ -117,10 +134,13 @@ html.dark {
    inline chips where a translucent background would show the row beneath it.
    Glass is a property of panels, not of every surface.
 
-   The shadow is pink-violet rather than grey-black in light mode, which is most
-   of what separates this from a generic frosted-glass effect. In dark mode it
-   is deep transparent black plus a very weak pink ambient — enough to separate
-   panel layers without glowing. */
+   The shadow is a deep cool blue rather than grey-black in light mode, which is
+   most of what separates this from a generic frosted-glass effect. In dark mode
+   it is deep transparent black plus a very weak pink ambient — enough to
+   separate panel layers without glowing.
+
+   These carry a tint too, so they are part of "is the app pink": the light
+   values below stay cool for the same reason the light palette does. */
 :root {
   --glass-blur: 24px;
   --glass-saturate: 150%;
@@ -136,23 +156,24 @@ html.dark {
   --glass-surface: rgba(255, 255, 255, 0.38);
   --glass-elevated: rgba(255, 255, 255, 0.60);
   /* Opaque stand-ins for browsers without backdrop-filter — see @supports. */
-  --glass-surface-solid: #fffafc;
-  --glass-elevated-solid: #fff4f8;
+  --glass-surface-solid: #fbfdff;
+  --glass-elevated-solid: #f4f8fd;
 
   --glass-border: rgba(255, 255, 255, 0.55);
-  --glass-border-strong: rgba(196, 146, 172, 0.42);
+  --glass-border-strong: rgba(100, 116, 139, 0.38);
   --glass-highlight: rgba(255, 255, 255, 0.85);
 
-  --glass-shadow-ambient: rgba(190, 110, 155, 0.22);
-  --glass-shadow-contact: rgba(150, 90, 135, 0.12);
-  --glass-shadow-lift: rgba(190, 110, 155, 0.30);
+  --glass-shadow-ambient: rgba(30, 64, 105, 0.20);
+  --glass-shadow-contact: rgba(30, 64, 105, 0.12);
+  --glass-shadow-lift: rgba(30, 64, 105, 0.28);
 
-  /* Canvas gradient stops + the two ambient light sources the panels blur. */
-  --glass-bg-1: #fff1f7;
-  --glass-bg-2: #f5eeff;
-  --glass-bg-3: #fffaf7;
-  --glass-glow-a: rgba(245, 139, 183, 0.30);
-  --glass-glow-b: rgba(167, 139, 250, 0.20);
+  /* Canvas gradient stops + the two ambient light sources the panels blur.
+     Two hues (sky, indigo) keep the depth the pink/violet pair gave it. */
+  --glass-bg-1: #f2f7fd;
+  --glass-bg-2: #eef3fa;
+  --glass-bg-3: #f8fbfe;
+  --glass-glow-a: rgba(56, 189, 248, 0.22);
+  --glass-glow-b: rgba(129, 140, 248, 0.16);
 }
 
 html.dark {

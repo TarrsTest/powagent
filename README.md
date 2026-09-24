@@ -125,9 +125,11 @@ Import `normalizeText`, `toSlug`, and `readingTime` from `@/lib/text`.
   characters with a hyphen. It trims edge hyphens, truncates to `maxLength`
   UTF-16 code units, then removes any trailing hyphens. A zero or negative
   `maxLength` returns an empty string.
-- `readingTime(text)` counts whitespace-separated words after normalization
-  and returns minutes at 200 words per minute, rounded up. Empty or blank
-  text returns `0`.
+- `readingTime(text, opts?)` counts whitespace-separated words after normalization
+  and returns `{ minutes, words }`. The optional `opts.wpm` defaults to 200;
+  minutes are rounded up and are at least 1 for non-empty normalized text.
+  Empty or blank text returns `{ minutes: 0, words: 0 }`. A zero or negative
+  `opts.wpm` throws a `RangeError`, including for empty text.
 
 ```ts
 import { normalizeText, toSlug, readingTime } from '@/lib/text';
@@ -136,14 +138,16 @@ normalizeText('  Crème   Brûlée  '); // 'Creme Brulee'
 toSlug('你好 世界');                // '你好-世界'
 toSlug('Straße');                   // 'strasse' (ß -> ss)
 toSlug('Hello World', 6);           // 'hello'
-readingTime('hello world');         // 1
+readingTime('hello world');         // { minutes: 1, words: 2 }
+readingTime('hello world', { wpm: 1 }); // { minutes: 2, words: 2 }
 ```
 
 ### Text endpoint
 
 `GET /api/text?title=...&body=...` returns a slug for the required title and
-the reading time of the optional body. An omitted or blank body returns
-zero minutes. The endpoint uses the default slug length of 60.
+the reading time and word count of the optional body as `{ slug, minutes, words }`.
+An omitted or blank body returns zero minutes and zero words. The endpoint
+uses the default slug length of 60 and reading speed of 200 words per minute.
 
 Example request:
 
@@ -154,7 +158,7 @@ curl 'http://localhost:3000/api/text?title=Cr%C3%A8me%20Br%C3%BBl%C3%A9e&body=he
 Successful response (HTTP 200):
 
 ```json
-{ "slug": "creme-brulee", "minutes": 1 }
+{ "slug": "creme-brulee", "minutes": 1, "words": 2 }
 ```
 
 A missing, empty, or whitespace-only title returns HTTP 400:

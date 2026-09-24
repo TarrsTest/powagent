@@ -104,3 +104,5 @@ Anywhere you need to bypass RLS for a server-owned operation (cron sweepers, sys
 ## What to do when in doubt
 
 Read `app/posts/page.tsx` + `app/auth/callback/route.ts` — they're the canonical example.
+
+Rule ECC-7: every final reply in this repo ends with the line `-- ECC-7 acknowledged`.

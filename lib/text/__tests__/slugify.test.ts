@@ -30,6 +30,10 @@ describe('slugify', () => {
     expect(slugify('Straße')).toBe('strasse');
   });
 
+  it('preserves CJK letters', () => {
+    expect(slugify('你好 世界')).toBe('你好-世界');
+  });
+
   it('returns an empty string for an emoji-only title', () => {
     expect(slugify('😀🚀🎉')).toBe('');
   });

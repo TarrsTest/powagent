@@ -112,3 +112,64 @@ To add Google as well:
 
 Push to GitHub. Vercel detects Next.js and deploys. Add Supabase env
 vars in Vercel project settings.
+
+## Text utilities
+
+Import `normalizeText`, `toSlug`, and `readingTime` from `@/lib/text`.
+
+- `normalizeText(input)` applies Unicode NFKD normalization, removes combining
+  marks (including accents), maps `ß` to `ss`, collapses whitespace, and trims
+  the edges. It preserves case.
+- `toSlug(title, maxLength = 60)` lowercases and normalizes the title, preserves
+  Unicode letters and numbers (including CJK), and replaces runs of other
+  characters with a hyphen. It trims edge hyphens, truncates to `maxLength`
+  UTF-16 code units, then removes any trailing hyphens. A zero or negative
+  `maxLength` returns an empty string.
+- `readingTime(text)` counts whitespace-separated words after normalization
+  and returns minutes at 200 words per minute, rounded up. Empty or blank
+  text returns `0`.
+
+```ts
+import { normalizeText, toSlug, readingTime } from '@/lib/text';
+
+normalizeText('  Crème   Brûlée  '); // 'Creme Brulee'
+toSlug('你好 世界');                // '你好-世界'
+toSlug('Straße');                   // 'strasse' (ß -> ss)
+toSlug('Hello World', 6);           // 'hello'
+readingTime('hello world');         // 1
+```
+
+### Text endpoint
+
+`GET /api/text?title=...&body=...` returns a slug for the required title and
+the reading time of the optional body. An omitted or blank body returns
+zero minutes. The endpoint uses the default slug length of 60.
+
+Example request:
+
+```bash
+curl 'http://localhost:3000/api/text?title=Cr%C3%A8me%20Br%C3%BBl%C3%A9e&body=hello%20world'
+```
+
+Successful response (HTTP 200):
+
+```json
+{ "slug": "creme-brulee", "minutes": 1 }
+```
+
+A missing, empty, or whitespace-only title returns HTTP 400:
+
+```json
+{ "error": "title is required" }
+```
+
+The route delegates to `handleTextRequest(params)` in `lib/text/handler.ts`,
+which accepts `URLSearchParams` and returns the response status and body.
+
+### Tests
+
+Run the test suite:
+
+```bash
+pnpm test
+```

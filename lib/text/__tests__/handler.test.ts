@@ -20,7 +20,7 @@ describe('handleTextRequest', () => {
     const params = new URLSearchParams({ title: '  Crème Brûlée! ', body: 'hello world' });
     expect(handleTextRequest(params)).toEqual({
       status: 200,
-      body: { slug: 'creme-brulee', minutes: 1, words: 2 },
+      body: { slug: 'creme-brulee', minutes: 1 },
     });
   });
 
@@ -31,21 +31,21 @@ describe('handleTextRequest', () => {
     });
     expect(handleTextRequest(params)).toEqual({
       status: 200,
-      body: { slug: 'long-read', minutes: 2, words: 201 },
+      body: { slug: 'long-read', minutes: 2 },
     });
   });
 
   it('returns zero minutes when the body is missing', () => {
     expect(handleTextRequest(new URLSearchParams({ title: 'Hello' }))).toEqual({
       status: 200,
-      body: { slug: 'hello', minutes: 0, words: 0 },
+      body: { slug: 'hello', minutes: 0 },
     });
   });
 
   it.each(['', ' \t\n '])('returns zero minutes for a blank body %j', (body) => {
     expect(handleTextRequest(new URLSearchParams({ title: 'Hello', body }))).toEqual({
       status: 200,
-      body: { slug: 'hello', minutes: 0, words: 0 },
+      body: { slug: 'hello', minutes: 0 },
     });
   });
 });

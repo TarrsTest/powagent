@@ -116,7 +116,7 @@ export default async function PostsPage() {
                 <div className="flex flex-wrap items-baseline gap-x-2 mb-1">
                   <h2 className="font-semibold">{p.title}</h2>
                   <span className="text-xs text-zinc-500">
-                    {readingTime(p.body).minutes} min read
+                    {readingTime(p.body)} min read
                   </span>
                 </div>
                 {p.author_id === user.id && (

@@ -120,10 +120,12 @@ Import `normalizeText`, `toSlug`, and `readingTime` from `@/lib/text`.
 - `normalizeText(input)` applies Unicode NFKD normalization, removes combining
   marks (including accents), maps `ß` to `ss`, collapses whitespace, and trims
   the edges. It preserves case.
-- `toSlug(title, maxLength = 60)` lowercases and normalizes the title, preserves
+- `toSlug(title, maxLength = 60)` lowercases and normalizes the title, lowercases
+  again after compatibility decomposition, preserves
   Unicode letters and numbers (including CJK), and replaces runs of other
   characters with a hyphen. It trims edge hyphens, truncates to `maxLength`
-  UTF-16 code units, then removes any trailing hyphens. A zero or negative
+  UTF-16 code units without splitting a surrogate pair, then removes any trailing
+  hyphens. A zero or negative
   `maxLength` returns an empty string.
 - `readingTime(text, opts?)` counts whitespace-separated words after normalization
   and returns a plain `number` representing minutes. The optional `opts.wpm`

@@ -22,6 +22,32 @@ describe('toSlug', () => {
     expect(toSlug('Hello World', 6)).toBe('hello');
   });
 
+  it.each([
+    ['𠀀abc', 1, ''],
+    ['𠀀abc', 2, '𠀀'],
+    ['a𠀀b', 2, 'a'],
+    ['a𠀀b', 3, 'a𠀀'],
+    ['a-𠀀b', 3, 'a'],
+    ['你好世界', 3, '你好世'],
+  ])('keeps whole Unicode characters in %s at limit %i', (title, limit, expected) => {
+    const slug = toSlug(title, limit);
+    expect(slug).toBe(expected);
+    expect(slug.length).toBeLessThanOrEqual(limit);
+    expect(() => encodeURIComponent(slug)).not.toThrow();
+  });
+
+  it('keeps the default boundary valid for very long Unicode input', () => {
+    const slug = toSlug('a'.repeat(59) + '𠀀'.repeat(100_000));
+    expect(slug).toBe('a'.repeat(59));
+    expect(() => encodeURIComponent(slug)).not.toThrow();
+  });
+
+  it.each([
+    ['𝑨𝑩𝑪', 'abc'], ['ᴬᴮ', 'ab'], ['ϒ', 'υ'], ['İ', 'i'], ['ẞ', 'ss'],
+  ])('lowercases normalized compatibility letters in %s', (title, expected) => {
+    expect(toSlug(title)).toBe(expected);
+  });
+
   it('returns an empty string for an empty title', () => {
     expect(toSlug('')).toBe('');
   });

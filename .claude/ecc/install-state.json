@@ -1,6 +1,6 @@
 {
   "schemaVersion": "ecc.install.v1",
-  "installedAt": "2026-09-24T05:03:29.216Z",
+  "installedAt": "2026-09-24T05:05:31.455Z",
   "target": {
     "id": "claude-project",
     "target": "claude-project",
@@ -4522,7 +4522,7 @@
           }
         ]
       },
-      "contentSha256": "cabadf8f058f7a5d7375c9a7ab3735e3412ca653eda30136f428c6f93ffee579"
+      "contentSha256": "b9af55ce0c7887d2e92ccd5c2c7772597333f41217331f770a6af61beefe00fa"
     },
     {
       "kind": "copy-file",

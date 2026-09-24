@@ -1,44 +1,44 @@
 import { describe, expect, it } from 'vitest';
-import { slugify } from '../slugify';
+import { toSlug } from '../toSlug';
 
-describe('slugify', () => {
+describe('toSlug', () => {
   it('converts plain ASCII to a lowercase slug', () => {
-    expect(slugify('Hello World 123')).toBe('hello-world-123');
+    expect(toSlug('Hello World 123')).toBe('hello-world-123');
   });
 
   it('removes accents', () => {
-    expect(slugify('Crème Brûlée')).toBe('creme-brulee');
+    expect(toSlug('Crème Brûlée')).toBe('creme-brulee');
   });
 
   it('collapses repeated punctuation', () => {
-    expect(slugify('hello...,,,world!!!again')).toBe('hello-world-again');
+    expect(toSlug('hello...,,,world!!!again')).toBe('hello-world-again');
   });
 
   it('removes leading and trailing symbols', () => {
-    expect(slugify('***Hello World!!!')).toBe('hello-world');
+    expect(toSlug('***Hello World!!!')).toBe('hello-world');
   });
 
   it('cuts at maxLength without leaving a trailing dash', () => {
-    expect(slugify('Hello World', 6)).toBe('hello');
+    expect(toSlug('Hello World', 6)).toBe('hello');
   });
 
   it('returns an empty string for an empty title', () => {
-    expect(slugify('')).toBe('');
+    expect(toSlug('')).toBe('');
   });
 
   it('transliterates German sharp s', () => {
-    expect(slugify('Straße')).toBe('strasse');
+    expect(toSlug('Straße')).toBe('strasse');
   });
 
   it('preserves CJK letters', () => {
-    expect(slugify('你好 世界')).toBe('你好-世界');
+    expect(toSlug('你好 世界')).toBe('你好-世界');
   });
 
   it('normalizes compatibility characters', () => {
-    expect(slugify('Ｆｕｌｌ ﬃ ①')).toBe('full-ffi-1');
+    expect(toSlug('Ｆｕｌｌ ﬃ ①')).toBe('full-ffi-1');
   });
 
   it('returns an empty string for an emoji-only title', () => {
-    expect(slugify('😀🚀🎉')).toBe('');
+    expect(toSlug('😀🚀🎉')).toBe('');
   });
 });

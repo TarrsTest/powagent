@@ -3,7 +3,7 @@ import { revalidatePath } from 'next/cache';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { faPenToSquare, faTrash } from '@fortawesome/free-solid-svg-icons';
 import { createClient } from '@/lib/supabase/server';
-import { readingTime, slugify } from '@/lib/text';
+import { readingTime, toSlug } from '@/lib/text';
 
 /**
  * RSC reads + Server Action writes — the canonical "one-service"
@@ -109,7 +109,7 @@ export default async function PostsPage() {
           {(posts as Post[] | null)?.map((p) => (
             <li
               key={p.id}
-              data-slug={slugify(p.title)}
+              data-slug={toSlug(p.title)}
               className="rounded-xl border border-zinc-200 p-4"
             >
               <div className="flex items-start justify-between gap-3">

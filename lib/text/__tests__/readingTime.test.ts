@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { readingTime } from '../readingTime.ts';
+import { readingTime } from '../readingTime';
 
 describe('readingTime', () => {
   it('returns zero for an empty string', () => {
@@ -20,5 +20,9 @@ describe('readingTime', () => {
 
   it('rounds up to two minutes for 201 words', () => {
     expect(readingTime(Array(201).fill('word').join(' '))).toBe(2);
+  });
+
+  it('counts words after compatibility normalization', () => {
+    expect(readingTime(Array(101).fill('ﷺ').join(' '))).toBe(3);
   });
 });

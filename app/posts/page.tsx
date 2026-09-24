@@ -3,6 +3,7 @@ import { revalidatePath } from 'next/cache';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { faPenToSquare, faTrash } from '@fortawesome/free-solid-svg-icons';
 import { createClient } from '@/lib/supabase/server';
+import { readingTime, slugify } from '@/lib/text';
 
 /**
  * RSC reads + Server Action writes — the canonical "one-service"
@@ -108,10 +109,16 @@ export default async function PostsPage() {
           {(posts as Post[] | null)?.map((p) => (
             <li
               key={p.id}
+              data-slug={slugify(p.title)}
               className="rounded-xl border border-zinc-200 p-4"
             >
               <div className="flex items-start justify-between gap-3">
-                <h2 className="font-semibold mb-1">{p.title}</h2>
+                <div className="flex flex-wrap items-baseline gap-x-2 mb-1">
+                  <h2 className="font-semibold">{p.title}</h2>
+                  <span className="text-xs text-zinc-500">
+                    {readingTime(p.body)} min read
+                  </span>
+                </div>
                 {p.author_id === user.id && (
                   <form action={deletePost}>
                     <input type="hidden" name="id" value={p.id} />

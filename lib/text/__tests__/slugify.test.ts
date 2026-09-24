@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { slugify } from '../slugify.ts';
+import { slugify } from '../slugify';
 
 describe('slugify', () => {
   it('converts plain ASCII to a lowercase slug', () => {
@@ -32,6 +32,10 @@ describe('slugify', () => {
 
   it('preserves CJK letters', () => {
     expect(slugify('你好 世界')).toBe('你好-世界');
+  });
+
+  it('normalizes compatibility characters', () => {
+    expect(slugify('Ｆｕｌｌ ﬃ ①')).toBe('full-ffi-1');
   });
 
   it('returns an empty string for an emoji-only title', () => {
